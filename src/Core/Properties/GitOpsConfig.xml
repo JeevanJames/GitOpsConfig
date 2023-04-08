@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>GitOpsConfig</name>
+    </assembly>
+    <members>
+        <member name="M:GitOpsConfig.ConfigurationBuilder.NestedVariablePattern">
+            <remarks>
+            Pattern explanation:<br/>
+            <code>
+            ○ Match the string "$(".<br/>
+            ○ "name" capture group.<br/>
+                ○ Match a word character greedily at least once.<br/>
+                ○ Loop greedily at least once.<br/>
+                    ○ Match '.'.<br/>
+                    ○ Match a word character greedily at least once.<br/>
+            ○ Match ')'.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.NestedVariablePattern_0">
+            <summary>Caches a <see cref="T:System.Text.RegularExpressions.Regex"/> instance for the NestedVariablePattern method.</summary>
+            <remarks>A custom Regex-derived type could not be generated because RegexOptions.NonBacktracking isn't supported.</remarks>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.NestedVariablePattern_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+    </members>
+</doc>

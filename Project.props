@@ -1,0 +1,10 @@
+<Project>
+
+    <PropertyGroup>
+        <BaseNamespace>GitOpsConfig</BaseNamespace>
+        <Product>GitOps Config</Product>
+        <RepositoryName>GitOpsConfig</RepositoryName>
+        <CopyrightYears>2022</CopyrightYears>
+    </PropertyGroup>
+
+</Project>
