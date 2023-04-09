@@ -49,13 +49,15 @@ public sealed partial class ConfigurationBuilder
 
         foreach (string configFileName in settings.Files)
         {
-            JObject accumulate = Aggregate(appDir, sections,
-                new JObject(),
+            JObject? accumulate = Aggregate(appDir, sections,
+                (JObject?)null,
                 (acc, dir) => JsonAggregator(acc, dir, configFileName));
 
-            ResolveJsonValues(accumulate, variables);
-
-            yield return new GeneratedConfiguration(configFileName, accumulate.ToString());
+            if (accumulate is not null)
+            {
+                ResolveJsonValues(accumulate, variables);
+                yield return new GeneratedConfiguration(configFileName, accumulate.ToString());
+            }
         }
     }
 
@@ -190,11 +192,13 @@ public sealed partial class ConfigurationBuilder
         }
     }
 
-    private static JObject JsonAggregator(JObject accumulate, string dir, string fileName)
+    private static JObject? JsonAggregator(JObject? accumulate, string dir, string fileName)
     {
         string jsonFilePath = Path.Combine(dir, fileName);
         if (!File.Exists(jsonFilePath))
             return accumulate;
+
+        accumulate ??= new JObject();
 
         JObject jsonObj = JObject.Parse(File.ReadAllText(jsonFilePath));
         accumulate.Merge(jsonObj, new JsonMergeSettings
