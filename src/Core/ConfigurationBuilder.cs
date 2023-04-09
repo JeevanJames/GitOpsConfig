@@ -42,14 +42,14 @@ public sealed partial class ConfigurationBuilder
         Settings settings = await LoadSettings(appDir, appName);
 
         // Load and resolve the variables.
-        Dictionary<string, string> variables = Aggregate(appDir, sections,
+        Dictionary<string, string> variables = await AggregateAsync(appDir, sections,
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             VariablesAggregator);
         ResolveVariables(variables);
 
         foreach (string configFileName in settings.Files)
         {
-            JObject? accumulate = Aggregate(appDir, sections,
+            JObject? accumulate = await AggregateAsync(appDir, sections,
                 (JObject?)null,
                 (acc, dir) => JsonAggregator(acc, dir, configFileName));
 
@@ -107,40 +107,43 @@ public sealed partial class ConfigurationBuilder
         return settings;
     }
 
-    private TAccumulate Aggregate<TAccumulate>(string appDir, IList<string> sections,
+    private async ValueTask<TAccumulate> AggregateAsync<TAccumulate>(string appDir,
+        IList<string> sections,
         TAccumulate seed,
-        Func<TAccumulate, string, TAccumulate> aggregatorFunc)
+        Func<TAccumulate, string, ValueTask<TAccumulate>> aggregatorFunc)
     {
         TAccumulate accumulate = seed;
 
         string dir = _sharedDir;
-        accumulate = aggregatorFunc(accumulate, dir);
+        accumulate = await aggregatorFunc(accumulate, dir);
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
-            accumulate = aggregatorFunc(accumulate, dir);
+            accumulate = await aggregatorFunc(accumulate, dir);
         }
 
         dir = appDir;
-        accumulate = aggregatorFunc(accumulate, dir);
+        accumulate = await aggregatorFunc(accumulate, dir);
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
-            accumulate = aggregatorFunc(accumulate, dir);
+            accumulate = await aggregatorFunc(accumulate, dir);
         }
 
         return accumulate;
     }
 
-    private static Dictionary<string, string> VariablesAggregator(Dictionary<string, string> variables, string dir)
+    private static ValueTask<Dictionary<string, string>> VariablesAggregator(
+        Dictionary<string, string> variables,
+        string dir)
     {
         string variablesFilePath = Path.Combine(dir, "variables.ini");
         if (!File.Exists(variablesFilePath))
-            return variables;
+            return ValueTask.FromResult(variables);
 
         Ini ini = new(new FileInfo(variablesFilePath), IniLoadSettings.ReadOnly);
         foreach (Section section in ini)
@@ -152,7 +155,7 @@ public sealed partial class ConfigurationBuilder
             }
         }
 
-        return variables;
+        return ValueTask.FromResult(variables);
     }
 
     private static void ResolveVariables(Dictionary<string, string> variables)
@@ -192,7 +195,7 @@ public sealed partial class ConfigurationBuilder
         }
     }
 
-    private static JObject? JsonAggregator(JObject? accumulate, string dir, string fileName)
+    private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir, string fileName)
     {
         string jsonFilePath = Path.Combine(dir, fileName);
         if (!File.Exists(jsonFilePath))
@@ -200,7 +203,7 @@ public sealed partial class ConfigurationBuilder
 
         accumulate ??= new JObject();
 
-        JObject jsonObj = JObject.Parse(File.ReadAllText(jsonFilePath));
+        JObject jsonObj = JObject.Parse(await File.ReadAllTextAsync(jsonFilePath));
         accumulate.Merge(jsonObj, new JsonMergeSettings
         {
             MergeArrayHandling = MergeArrayHandling.Union,
