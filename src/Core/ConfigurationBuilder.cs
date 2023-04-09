@@ -27,7 +27,7 @@ public sealed partial class ConfigurationBuilder
             throw new DirectoryNotFoundException($"Shared directory {_sharedDir} not found.");
     }
 
-    public IEnumerable<GeneratedConfiguration> Generate(string appName, params string[] sections)
+    public async IAsyncEnumerable<GeneratedConfiguration> GenerateAsync(string appName, params string[] sections)
     {
         string appDir = Path.Combine(_appsDir, appName);
         if (!Directory.Exists(appDir))
@@ -39,7 +39,7 @@ public sealed partial class ConfigurationBuilder
         }
 
         // Load the settings file and deal with any errors in it.
-        Settings settings = LoadSettings(appDir, appName);
+        Settings settings = await LoadSettings(appDir, appName);
 
         // Load and resolve the variables.
         Dictionary<string, string> variables = Aggregate(appDir, sections,
@@ -59,26 +59,38 @@ public sealed partial class ConfigurationBuilder
         }
     }
 
-    public IDictionary<string, IList<GeneratedConfiguration>> Generate(Func<string, bool> predicate,
-        params string[] sections)
+    public async Task<IDictionary<string, IList<GeneratedConfiguration>>> GenerateAsync(
+        Func<string, bool> predicate,
+        IEnumerable<string> sections,
+        CancellationToken cancellationToken = default)
     {
-        Dictionary<string, IList<GeneratedConfiguration>> result = new(Directory
+        IEnumerable<string> appNames = Directory
             .EnumerateDirectories(_appsDir, "*", SearchOption.TopDirectoryOnly)
             .Select(dir => Path.GetFileName(dir))
-            .Where(predicate)
-            .Select(appName =>
-            {
-                IList<GeneratedConfiguration> configs = Generate(appName, sections).ToList();
-                return new KeyValuePair<string, IList<GeneratedConfiguration>>(appName, configs);
-            }), StringComparer.OrdinalIgnoreCase);
+            .Where(predicate);
+
+        Dictionary<string, IList<GeneratedConfiguration>> result = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string appName in appNames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            List<GeneratedConfiguration> configs = await GenerateAsync(appName, sections.ToArray()).ToListAsync();
+            result.Add(appName, configs);
+        }
+
         return result;
     }
 
-    private static Settings LoadSettings(string appDir, string appName)
+    public async Task<IDictionary<string, IList<GeneratedConfiguration>>> GenerateAsync(
+        IEnumerable<string> sections,
+        CancellationToken cancellationToken = default) =>
+        await GenerateAsync(_ => true, sections, cancellationToken);
+
+    private static async Task<Settings> LoadSettings(string appDir, string appName)
     {
         string settingsFilePath = Path.Combine(appDir, "__settings.json");
         Settings? settings = File.Exists(settingsFilePath)
-            ? JsonConvert.DeserializeObject<Settings>(File.ReadAllText(settingsFilePath))
+            ? JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(settingsFilePath))
             : new Settings();
 
         if (settings is null)

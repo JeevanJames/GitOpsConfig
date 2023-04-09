@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Cli": {
+      "commandName": "Project"
+    },
+    "Windows Terminal": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Users\\Jeevan\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe",
+      "commandLineArgs": "dotnet.exe run --project $(ProjectPath)",
+      "workingDirectory": "$(ProjectDir)"
+    }
+  }
+}
