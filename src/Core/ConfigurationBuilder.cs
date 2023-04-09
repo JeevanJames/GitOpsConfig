@@ -52,8 +52,7 @@ public sealed partial class ConfigurationBuilder
 
         foreach (AppSettings.FileConfigModel fileConfig in settings.Files)
         {
-            JObject? accumulate = await AggregateAsync(appDir, sections,
-                (JObject?)null,
+            JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
                 (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name));
 
             if (accumulate is not null)

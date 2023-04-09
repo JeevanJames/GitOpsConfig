@@ -15,7 +15,7 @@ ConfigurationBuilder builder = new(@"D:\Temp\config");
 //}
 
 await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs)
-               in builder.GenerateAsync(new[] { "dev" }))
+    in builder.GenerateAsync(new[] { "dev" }))
 {
     Write(new Rule(appName).RuleStyle(new Style(Yellow1)));
     foreach (GeneratedConfiguration config in configs)
