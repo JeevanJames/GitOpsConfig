@@ -282,6 +282,6 @@ public sealed partial class ConfigurationBuilder
     }
 
     [GeneratedRegex(@"\$\((?<name>\w+(\.\w+)+)\)",
-        RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking, 1000)]
+        RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking | RegexOptions.Compiled, 1000)]
     private static partial Regex NestedVariablePattern();
 }
