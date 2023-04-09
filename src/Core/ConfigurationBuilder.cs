@@ -30,7 +30,9 @@ public sealed partial class ConfigurationBuilder
             throw new DirectoryNotFoundException($"Shared directory {_sharedDir} not found.");
     }
 
-    public async IAsyncEnumerable<GeneratedConfiguration> GenerateAsync(string appName, params string[] sections)
+    public async IAsyncEnumerable<GeneratedConfiguration> GenerateAsync(string appName,
+        IEnumerable<string> sections,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         string appDir = Path.Combine(_appsDir, appName);
         if (!Directory.Exists(appDir))
@@ -47,16 +49,20 @@ public sealed partial class ConfigurationBuilder
         // Load and resolve the variables.
         Dictionary<string, string> variables = await AggregateAsync(appDir, sections,
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            VariablesAggregator);
+            VariablesAggregator, cancellationToken);
         ResolveVariables(variables);
 
         foreach (AppSettings.FileConfigModel fileConfig in settings.Files)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
-                (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name));
+                (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name), cancellationToken);
 
             if (accumulate is not null)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 ResolveJsonValues(accumulate, variables);
                 yield return new GeneratedConfiguration(fileConfig.Name, accumulate.ToString());
             }
@@ -76,7 +82,9 @@ public sealed partial class ConfigurationBuilder
         foreach (string appName in appNames)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<GeneratedConfiguration> configs = await GenerateAsync(appName, sections.ToArray())
+            List<GeneratedConfiguration> configs = await GenerateAsync(appName,
+                    sections.ToArray(),
+                    cancellationToken)
                 .ToListAsync(cancellationToken);
             yield return new AppConfigurations(appName, configs);
         }
@@ -107,31 +115,42 @@ public sealed partial class ConfigurationBuilder
     }
 
     private async ValueTask<TAccumulate> AggregateAsync<TAccumulate>(string appDir,
-        IList<string> sections,
+        IEnumerable<string> sections,
         TAccumulate seed,
-        Func<TAccumulate, string, ValueTask<TAccumulate>> aggregatorFunc)
+        Func<TAccumulate, string, ValueTask<TAccumulate>> aggregatorFunc,
+        CancellationToken cancellationToken)
     {
         TAccumulate accumulate = seed;
 
         string dir = _sharedDir;
+        cancellationToken.ThrowIfCancellationRequested();
         accumulate = await aggregatorFunc(accumulate, dir);
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
+
+            cancellationToken.ThrowIfCancellationRequested();
             accumulate = await aggregatorFunc(accumulate, dir);
         }
 
+        //TODO: If we hit the last section, then ensure that there are no further subdirectories
+
         dir = appDir;
+        cancellationToken.ThrowIfCancellationRequested();
         accumulate = await aggregatorFunc(accumulate, dir);
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
+
+            cancellationToken.ThrowIfCancellationRequested();
             accumulate = await aggregatorFunc(accumulate, dir);
         }
+
+        //TODO: If we hit the last section, then ensure that there are no further subdirectories
 
         return accumulate;
     }

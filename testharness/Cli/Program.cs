@@ -15,14 +15,19 @@ ConfigurationBuilder builder = new(@"D:\Temp\config");
 //}
 
 await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs)
-    in builder.GenerateAsync(new[] { "dev" }))
+    in builder.GenerateAsync(new[] { "qa", "in-qa" }))
 {
     Write(new Rule(appName).RuleStyle(new Style(Yellow1)));
     foreach (GeneratedConfiguration config in configs)
     {
-        Write(new Panel(new JsonText(config.Content))
+        JsonText jsonText = new JsonText(config.Content)
+            .BracketColor(Yellow3)
+            .BracesColor(Yellow1);
+        Write(new Panel(jsonText)
             .Header(config.FileName)
-            .BorderColor(Cyan1));
+            .BorderColor(Cyan1)
+            .DoubleBorder()
+            .Expand());
     }
 }
 

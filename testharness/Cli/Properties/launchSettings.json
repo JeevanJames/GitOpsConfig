@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Cli": {
+    "CLI": {
       "commandName": "Project"
     },
     "Windows Terminal": {
