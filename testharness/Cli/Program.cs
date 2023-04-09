@@ -14,14 +14,15 @@ ConfigurationBuilder builder = new(@"D:\Temp\config");
 //    Write(new JsonText(content));
 //}
 
-IDictionary<string, IList<GeneratedConfiguration>> results = await builder.GenerateAsync(new[] { "dev" });
-foreach ((string appName, IList<GeneratedConfiguration> configs) in results)
+await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs)
+               in builder.GenerateAsync(new[] { "dev" }))
 {
-    Write(new Rule(appName));
+    Write(new Rule(appName).RuleStyle(new Style(Yellow1)));
     foreach (GeneratedConfiguration config in configs)
     {
         Write(new Panel(new JsonText(config.Content))
-            .Header(config.FileName));
+            .Header(config.FileName)
+            .BorderColor(Cyan1));
     }
 }
 

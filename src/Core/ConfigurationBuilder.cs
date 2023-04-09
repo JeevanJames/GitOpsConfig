@@ -1,4 +1,7 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+
+using GitOpsConfig.Config;
 
 using IniFile;
 
@@ -39,7 +42,7 @@ public sealed partial class ConfigurationBuilder
         }
 
         // Load the settings file and deal with any errors in it.
-        Settings settings = await LoadSettings(appDir, appName);
+        AppSettings settings = await LoadSettings(appDir, appName);
 
         // Load and resolve the variables.
         Dictionary<string, string> variables = await AggregateAsync(appDir, sections,
@@ -47,53 +50,50 @@ public sealed partial class ConfigurationBuilder
             VariablesAggregator);
         ResolveVariables(variables);
 
-        foreach (string configFileName in settings.Files)
+        foreach (AppSettings.FileConfigModel fileConfig in settings.Files)
         {
             JObject? accumulate = await AggregateAsync(appDir, sections,
                 (JObject?)null,
-                (acc, dir) => JsonAggregator(acc, dir, configFileName));
+                (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name));
 
             if (accumulate is not null)
             {
                 ResolveJsonValues(accumulate, variables);
-                yield return new GeneratedConfiguration(configFileName, accumulate.ToString());
+                yield return new GeneratedConfiguration(fileConfig.Name, accumulate.ToString());
             }
         }
     }
 
-    public async Task<IDictionary<string, IList<GeneratedConfiguration>>> GenerateAsync(
+    public async IAsyncEnumerable<AppConfigurations> GenerateAsync(
         Func<string, bool> predicate,
         IEnumerable<string> sections,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         IEnumerable<string> appNames = Directory
             .EnumerateDirectories(_appsDir, "*", SearchOption.TopDirectoryOnly)
             .Select(dir => Path.GetFileName(dir))
             .Where(predicate);
 
-        Dictionary<string, IList<GeneratedConfiguration>> result = new(StringComparer.OrdinalIgnoreCase);
-
         foreach (string appName in appNames)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<GeneratedConfiguration> configs = await GenerateAsync(appName, sections.ToArray()).ToListAsync();
-            result.Add(appName, configs);
+            List<GeneratedConfiguration> configs = await GenerateAsync(appName, sections.ToArray())
+                .ToListAsync(cancellationToken);
+            yield return new AppConfigurations(appName, configs);
         }
-
-        return result;
     }
 
-    public async Task<IDictionary<string, IList<GeneratedConfiguration>>> GenerateAsync(
+    public IAsyncEnumerable<AppConfigurations> GenerateAsync(
         IEnumerable<string> sections,
         CancellationToken cancellationToken = default) =>
-        await GenerateAsync(_ => true, sections, cancellationToken);
+        GenerateAsync(_ => true, sections, cancellationToken);
 
-    private static async Task<Settings> LoadSettings(string appDir, string appName)
+    private static async Task<AppSettings> LoadSettings(string appDir, string appName)
     {
         string settingsFilePath = Path.Combine(appDir, "__settings.json");
-        Settings? settings = File.Exists(settingsFilePath)
-            ? JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(settingsFilePath))
-            : new Settings();
+        AppSettings? settings = File.Exists(settingsFilePath)
+            ? JsonConvert.DeserializeObject<AppSettings>(await File.ReadAllTextAsync(settingsFilePath))
+            : new AppSettings();
 
         if (settings is null)
             throw new InvalidOperationException($"Error reading from settings file for {appName} from {settingsFilePath}.");
