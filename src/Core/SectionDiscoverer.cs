@@ -1,12 +1,23 @@
 ﻿namespace GitOpsConfig;
 
-public static class SectionEnumerator
+public static class SectionDiscoverer
 {
-    public static IEnumerable<string[]> EnumerateSectionsFrom(string rootDir)
+    public static IEnumerable<string[]> DiscoverSectionsFrom(string appsDir)
+    {
+        IEnumerable<string> appDirs = Directory.EnumerateDirectories(appsDir, "*", SearchOption.TopDirectoryOnly);
+        foreach (string appDir in appDirs)
+        {
+            IEnumerable<string[]> appSections = DiscoverSectionsForApp(appDir);
+            foreach (string[] appSection in appSections)
+                yield return appSection;
+        }
+    }
+
+    public static IEnumerable<string[]> DiscoverSectionsForApp(string appDir)
     {
         List<string[]> chains = new();
 
-        foreach (string subdir in Directory.EnumerateDirectories(rootDir, "*", SearchOption.TopDirectoryOnly))
+        foreach (string subdir in Directory.EnumerateDirectories(appDir, "*", SearchOption.TopDirectoryOnly))
         {
             EnumerateSubdir(subdir, chains, new Stack<string>());
         }

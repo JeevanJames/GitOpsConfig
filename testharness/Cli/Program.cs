@@ -9,6 +9,7 @@ using static Spectre.Console.AnsiConsole;
 using static Spectre.Console.Color;
 
 const string rootDir = @"D:\Temp\config";
+string appsDir = Path.Combine(rootDir, "apps");
 
 //ConfigurationBuilder builder = new(rootDir);
 
@@ -35,7 +36,7 @@ const string rootDir = @"D:\Temp\config";
 //    }
 //}
 
-IEnumerable<string[]> sectionSets = SectionEnumerator.EnumerateSectionsFrom(rootDir);
+IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsFrom(appsDir);
 foreach (string[] section in sectionSets)
 {
     string path = string.Join($"[{Yellow1}]/[/]", section);
