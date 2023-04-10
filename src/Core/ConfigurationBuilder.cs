@@ -64,7 +64,23 @@ public sealed partial class ConfigurationBuilder
                 cancellationToken.ThrowIfCancellationRequested();
 
                 ResolveJsonValues(accumulate, variables);
-                yield return new GeneratedConfiguration(fileConfig.Name, accumulate.ToString());
+
+                string configStr = accumulate.ToString();
+
+                // Ensure that there are no variables in the final configuration string.
+                MatchCollection variableMatches = NestedVariablePattern().Matches(configStr);
+                if (variableMatches.Count > 0)
+                {
+                    string variablesFound = string.Join(", ",
+                        variableMatches.Take(15).Select(m => m.Value));
+                    throw new InvalidOperationException($"""
+                        Found {variableMatches.Count} variable(s) in the final JSON configuration.
+                        These need to be resolved.
+                        The variables include {variablesFound}.
+                        """);
+                }
+
+                yield return new GeneratedConfiguration(fileConfig.Name, configStr);
             }
         }
     }
@@ -267,13 +283,14 @@ public sealed partial class ConfigurationBuilder
                 break;
 
             case JObject jobject:
-                foreach (JProperty property in jobject.Properties())
-                    ResolveJsonValues(property.Value, variables);
+                JProperty[] properties = jobject.Properties().ToArray();
+                for (int i = 0; i < properties.Length; i++)
+                    ResolveJsonValues(properties[i].Value, variables);
                 break;
 
             case JArray jarray:
-                foreach (JToken item in jarray)
-                    ResolveJsonValues(item, variables);
+                for (int i = 0; i < jarray.Count; i++)
+                    ResolveJsonValues(jarray[i], variables);
                 break;
 
             default:
