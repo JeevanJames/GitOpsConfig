@@ -3,44 +3,56 @@ using GitOpsConfig;
 using IniFile;
 
 using Spectre.Console;
-using Spectre.Console.Json;
 
 using static Spectre.Console.AnsiConsole;
 using static Spectre.Console.Color;
 
 const string rootDir = @"D:\Temp\config";
 string appsDir = Path.Combine(rootDir, "apps");
+string outputDir = Path.Combine(rootDir, "_processing", "output");
 
-//ConfigurationBuilder builder = new(rootDir);
+if (!Directory.Exists(outputDir))
+    Directory.CreateDirectory(outputDir);
 
-//await foreach ((string fileName, string content) in builder.GenerateAsync("MyApp", "dev"))
-//{
-//    Write(new Rule(fileName));
-//    Write(new JsonText(content));
-//}
-
-//await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs)
-//    in builder.GenerateAsync(new[] { "qa", "in-qa" }))
-//{
-//    Write(new Rule(appName).RuleStyle(new Style(Yellow1)));
-//    foreach (GeneratedConfiguration config in configs)
-//    {
-//        JsonText jsonText = new JsonText(config.Content)
-//            .BracketColor(Yellow3)
-//            .BracesColor(Yellow1);
-//        Write(new Panel(jsonText)
-//            .Header(config.FileName)
-//            .BorderColor(Cyan1)
-//            .DoubleBorder()
-//            .Expand());
-//    }
-//}
+ConfigurationBuilder builder = new(rootDir);
 
 IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsFrom(appsDir);
-foreach (string[] section in sectionSets)
+
+Table table = new Table()
+    .AddColumns("App", "Sections", "Result");
+
+foreach (string[] sectionSet in sectionSets)
 {
-    string path = string.Join($"[{Yellow1}]/[/]", section);
-    MarkupLine($"[{Green1}]{path}[/]");
+    string sectionPath = string.Join($"[{Yellow1}] -> [/]", sectionSet);
+
+    string currentAppName = "N/A";
+    try
+    {
+        await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs) in
+                       builder.GenerateAsync(sectionSet))
+        {
+            currentAppName = appName;
+
+            foreach (GeneratedConfiguration config in configs)
+            {
+                string sectionStr = string.Join('.', sectionSet);
+                string fileName = $"{currentAppName}_{sectionStr}_{config.FileName}";
+                string filePath = Path.Combine(outputDir, fileName);
+                await File.WriteAllTextAsync(filePath, config.Content);
+
+                table.AddRow(currentAppName, sectionPath, $"[{Green1}]{fileName.EscapeMarkup()}[/]");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        table.AddRow(
+            new Text(currentAppName),
+            new Text(sectionPath),
+            ex.GetRenderable(ExceptionFormats.ShortenEverything));
+    }
 }
+
+Write(table);
 
 System.Console.ReadLine();

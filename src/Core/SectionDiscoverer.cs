@@ -36,9 +36,8 @@ public static class SectionDiscoverer
                 EnumerateSubdir(subdir, chains, currentChain);
         }
         else
-        {
             chains.Add(currentChain.Reverse().ToArray());
-            currentChain.Pop();
-        }
+
+        currentChain.Pop();
     }
 }
