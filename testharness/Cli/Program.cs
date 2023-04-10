@@ -23,7 +23,7 @@ Table table = new Table()
 
 foreach (string[] sectionSet in sectionSets)
 {
-    string sectionPath = string.Join($"[{Yellow1}] -> [/]", sectionSet);
+    string sectionPath = $"[{Cyan1}]{string.Join($"[{Magenta1}] -> [/]", sectionSet)}[/]";
 
     string currentAppName = "N/A";
     try
@@ -48,7 +48,7 @@ foreach (string[] sectionSet in sectionSets)
     {
         table.AddRow(
             new Text(currentAppName),
-            new Text(sectionPath),
+            new Markup(sectionPath),
             ex.GetRenderable(ExceptionFormats.ShortenEverything));
     }
 }
