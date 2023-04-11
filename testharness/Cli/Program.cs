@@ -27,22 +27,21 @@ if (!Directory.Exists(referenceDir))
 
 ConfigurationBuilder builder = new(rootDir);
 
-IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsFrom(appsDir);
-
 Table table = new Table()
     .AddColumns("File name", "Comparison");
 
-foreach (string[] sectionSet in sectionSets)
+foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
 {
-    try
+    IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsForApp(appsDir, appName);
+    foreach (string[] sectionSet in sectionSets)
     {
-        await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs) in
-                       builder.GenerateAsync(sectionSet))
+        try
         {
-            foreach (GeneratedConfiguration config in configs)
+            await foreach (GeneratedConfiguration config in builder.GenerateAsync(appName, sectionSet))
             {
                 string sectionStr = string.Join('.', sectionSet);
-                string displayFileName = $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
+                string displayFileName =
+                    $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
 
                 string fileName = $"{appName}_{sectionStr}_{config.FileName}";
                 string filePath = Path.Combine(outputDir, fileName);
@@ -61,14 +60,54 @@ foreach (string[] sectionSet in sectionSets)
                     new Markup(result));
             }
         }
-    }
-    catch (Exception ex)
-    {
-        table.AddRow(
-            new Markup(string.Join('.', sectionSet)),
-            new Markup($"[{Red1}]{ex.Message}[/]"));
+        catch (Exception ex)
+        {
+            table.AddRow(
+                new Markup($"[{Green1}]{appName}[/]_[{Magenta1}]{string.Join('.', sectionSet)}[/]"),
+                new Markup($"[{Red1}]{ex.Message.EscapeMarkup()}[/]"));
+        }
     }
 }
+
+//IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsFrom(appsDir);
+
+//foreach (string[] sectionSet in sectionSets)
+//{
+//    try
+//    {
+//        await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs) in
+//                       builder.GenerateAsync(sectionSet))
+//        {
+//            foreach (GeneratedConfiguration config in configs)
+//            {
+//                string sectionStr = string.Join('.', sectionSet);
+//                string displayFileName = $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
+
+//                string fileName = $"{appName}_{sectionStr}_{config.FileName}";
+//                string filePath = Path.Combine(outputDir, fileName);
+
+//                await File.WriteAllTextAsync(filePath, config.Content);
+
+//                string result = CompareConfigs(outputDir, referenceDir, fileName) switch
+//                {
+//                    null => $"[{Orange1}]Reference file not found[/]",
+//                    true => $"[{Green1}]Semantically equal[/]",
+//                    false => $"[{Yellow4}]Different[/]",
+//                };
+
+//                table.AddRow(
+//                    new Markup(displayFileName),
+//                    new Markup(result));
+//            }
+//        }
+//    }
+//    catch (Exception ex)
+//    {
+//        table.AddRow(
+//            new Markup(string.Join('.', sectionSet)),
+//            new Markup($"[{Red1}]{ex.Message.EscapeMarkup()}[/]"));
+//    }
+//}
 
 Write(table);
 
@@ -76,7 +115,7 @@ System.Console.ReadLine();
 
 static bool? CompareConfigs(string outputDir, string referenceDir, string fileName)
 {
-    string referenceFilePath = Path.Combine(referenceDir, referenceDir);
+    string referenceFilePath = Path.Combine(referenceDir, fileName);
     if (!File.Exists(referenceFilePath))
         return null;
 

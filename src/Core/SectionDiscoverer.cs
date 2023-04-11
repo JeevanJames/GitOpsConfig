@@ -2,25 +2,28 @@
 
 public static class SectionDiscoverer
 {
+    public static IEnumerable<string> EnumerateApplications(string appsDir)
+    {
+        return Directory.EnumerateDirectories(appsDir, "*", SearchOption.TopDirectoryOnly)
+            .Select(dir => Path.GetFileName(dir));
+    }
+
     public static IEnumerable<string[]> DiscoverSectionsFrom(string appsDir)
     {
-        IEnumerable<string> appDirs = Directory.EnumerateDirectories(appsDir, "*", SearchOption.TopDirectoryOnly);
-        foreach (string appDir in appDirs)
+        foreach (string appDir in Directory.EnumerateDirectories(appsDir, "*", SearchOption.TopDirectoryOnly))
         {
-            IEnumerable<string[]> appSections = DiscoverSectionsForApp(appDir);
-            foreach (string[] appSection in appSections)
+            foreach (string[] appSection in DiscoverSectionsForApp(appsDir, Path.GetFileName(appDir)))
                 yield return appSection;
         }
     }
 
-    public static IEnumerable<string[]> DiscoverSectionsForApp(string appDir)
+    public static IEnumerable<string[]> DiscoverSectionsForApp(string appsDir, string appName)
     {
         List<string[]> chains = new();
 
+        string appDir = Path.Combine(appsDir, appName);
         foreach (string subdir in Directory.EnumerateDirectories(appDir, "*", SearchOption.TopDirectoryOnly))
-        {
             EnumerateSubdir(subdir, chains, new Stack<string>());
-        }
 
         return chains;
     }
