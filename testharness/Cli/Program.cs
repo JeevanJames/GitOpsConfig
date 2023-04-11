@@ -2,6 +2,8 @@ using System.Linq.Expressions;
 
 using GitOpsConfig;
 
+using JsonDiffPatchDotNet;
+
 using Newtonsoft.Json.Linq;
 
 using Spectre.Console;
@@ -30,6 +32,8 @@ ConfigurationBuilder builder = new(rootDir);
 Table table = new Table()
     .AddColumns("File name", "Comparison");
 
+List<string> differences = new();
+
 foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
 {
     IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsForApp(appsDir, appName);
@@ -48,12 +52,15 @@ foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
 
                 await File.WriteAllTextAsync(filePath, config.Content);
 
-                string result = CompareConfigs(outputDir, referenceDir, fileName) switch
+                bool? compareResult = CompareConfigs(outputDir, referenceDir, fileName);
+                string result = compareResult switch
                 {
                     null => $"[{Orange1}]Reference file not found[/]",
                     true => $"[{Green1}]Semantically equal[/]",
                     false => $"[{Yellow4}]Different[/]",
                 };
+                if (!compareResult.GetValueOrDefault(true))
+                    differences.Add(filePath);
 
                 table.AddRow(
                     new Markup(displayFileName),
@@ -69,47 +76,14 @@ foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
     }
 }
 
-//IEnumerable<string[]> sectionSets = SectionDiscoverer.DiscoverSectionsFrom(appsDir);
-
-//foreach (string[] sectionSet in sectionSets)
-//{
-//    try
-//    {
-//        await foreach ((string appName, IReadOnlyList<GeneratedConfiguration> configs) in
-//                       builder.GenerateAsync(sectionSet))
-//        {
-//            foreach (GeneratedConfiguration config in configs)
-//            {
-//                string sectionStr = string.Join('.', sectionSet);
-//                string displayFileName = $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
-
-//                string fileName = $"{appName}_{sectionStr}_{config.FileName}";
-//                string filePath = Path.Combine(outputDir, fileName);
-
-//                await File.WriteAllTextAsync(filePath, config.Content);
-
-//                string result = CompareConfigs(outputDir, referenceDir, fileName) switch
-//                {
-//                    null => $"[{Orange1}]Reference file not found[/]",
-//                    true => $"[{Green1}]Semantically equal[/]",
-//                    false => $"[{Yellow4}]Different[/]",
-//                };
-
-//                table.AddRow(
-//                    new Markup(displayFileName),
-//                    new Markup(result));
-//            }
-//        }
-//    }
-//    catch (Exception ex)
-//    {
-//        table.AddRow(
-//            new Markup(string.Join('.', sectionSet)),
-//            new Markup($"[{Red1}]{ex.Message.EscapeMarkup()}[/]"));
-//    }
-//}
-
 Write(table);
+
+foreach (string difference in differences)
+{
+    string diff = CompareConfigs2(outputDir, referenceDir, Path.GetFileName(difference));
+    MarkupLineInterpolated($"[{Blue1}]{difference}[/]");
+    System.Console.WriteLine(diff);
+}
 
 System.Console.ReadLine();
 
@@ -125,4 +99,20 @@ static bool? CompareConfigs(string outputDir, string referenceDir, string fileNa
     JObject output = JObject.Parse(File.ReadAllText(outputFilePath));
 
     return JToken.DeepEquals(output, reference);
+}
+
+static string CompareConfigs2(string outputDir, string referenceDir, string fileName)
+{
+    string referenceFilePath = Path.Combine(referenceDir, fileName);
+    if (!File.Exists(referenceFilePath))
+        return string.Empty;
+
+    string outputFilePath = Path.Combine(outputDir, fileName);
+
+    JObject reference = JObject.Parse(File.ReadAllText(referenceFilePath));
+    JObject output = JObject.Parse(File.ReadAllText(outputFilePath));
+
+    JsonDiffPatch differ = new();
+    JToken diff = differ.Diff(reference, output);
+    return diff.ToString();
 }
