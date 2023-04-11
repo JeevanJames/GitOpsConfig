@@ -64,6 +64,7 @@ public sealed partial class ConfigurationBuilder
                 cancellationToken.ThrowIfCancellationRequested();
 
                 ResolveJsonValues(accumulate, variables);
+                UpdateDataTypes(accumulate, fileConfig);
 
                 string configStr = accumulate.ToString();
 
@@ -295,6 +296,46 @@ public sealed partial class ConfigurationBuilder
 
             default:
                 throw new InvalidOperationException($"Unrecognized token type - {token.GetType()}");
+        }
+    }
+
+    private void UpdateDataTypes(JObject jobject, AppSettings.FileConfigModel settings)
+    {
+        Replace(settings.Name, jobject, settings.TypeTransforms.Boolean, s =>
+        {
+            if (!bool.TryParse(s, out bool boolValue))
+                throw new InvalidOperationException("Not a boolean.");
+            return new JValue(boolValue);
+        });
+        Replace(settings.Name, jobject, settings.TypeTransforms.Number, s =>
+        {
+            if (long.TryParse(s, out long integralValue))
+                return new JValue(integralValue);
+            if (double.TryParse(s, out double floatingPointValue))
+                return new JValue(floatingPointValue);
+            throw new InvalidOperationException("Not a number.");
+        });
+
+        static void Replace(string fileName, JObject jo, IList<string> paths, Func<string, JValue> converter)
+        {
+            foreach (string path in paths)
+            {
+                JToken? matchedToken = jo.SelectToken(path);
+                if (matchedToken is null)
+                    continue;
+
+                if (matchedToken is not JValue jvalue)
+                {
+                    throw new InvalidOperationException($"""
+                        Matched a data type path {path} in file {fileName} to
+                        {matchedToken.Path}.
+                        However, this is not a value ({nameof(JValue)}), but is a {matchedToken.GetType().Name} instead.
+                        """);
+                }
+
+                JValue transformedValue = converter(jvalue.ToString());
+                jvalue.Replace(transformedValue);
+            }
         }
     }
 

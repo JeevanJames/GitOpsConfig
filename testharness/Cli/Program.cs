@@ -60,7 +60,7 @@ foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
         }
         catch (Exception ex)
         {
-            MarkupLine($"[{Red1}]Error - [/][{White}]{ex.Message.EscapeMarkup()}[/]");
+            MarkupLine($"[{Red1}]Error - [/][{White}]{ex.ToString().EscapeMarkup()}[/]");
         }
     }
 }
