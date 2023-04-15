@@ -8,6 +8,8 @@ using IniFile;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+using Scriban;
+
 namespace GitOpsConfig;
 
 public sealed partial class ConfigurationBuilder
@@ -52,37 +54,55 @@ public sealed partial class ConfigurationBuilder
             VariablesAggregator, cancellationToken);
         ResolveVariables(variables);
 
+        // Dictionary containing the same variables, but where the keys are template friendly, i.e.
+        // they use underscores instead of periods. We create it only on demand.
+        Dictionary<string, string>? templateVariables = null;
+
+        // Process each file for this app.
         foreach (AppSettings.FileConfigModel fileConfig in settings.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
                 (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name), cancellationToken);
 
-            if (accumulate is not null)
+            if (accumulate is null)
+                continue;
+
+            JObject jsonObject;
+            if (fileConfig.IsTemplate)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ResolveJsonValues(accumulate, variables);
-                UpdateDataTypes(accumulate, fileConfig);
-
-                string configStr = accumulate.ToString();
-
-                // Ensure that there are no variables in the final configuration string.
-                MatchCollection variableMatches = NestedVariablePattern().Matches(configStr);
-                if (variableMatches.Count > 0)
-                {
-                    string variablesFound = string.Join(", ",
-                        variableMatches.Take(15).Select(m => m.Value));
-                    throw new InvalidOperationException($"""
-                        Found {variableMatches.Count} variable(s) in the final JSON configuration.
-                        These need to be resolved.
-                        The variables include {variablesFound}.
-                        """);
-                }
-
-                yield return new GeneratedConfiguration(fileConfig.Name, configStr);
+                // Resolve the JSON string as a scriban template.
+                string jsonTemplate = accumulate.ToString();
+                Template template = Template.Parse(jsonTemplate);
+                templateVariables ??= variables.ToDictionary(
+                    kvp => kvp.Key.Replace('.', '_'), kvp => kvp.Value);
+                string renderedJson = await template.RenderAsync(templateVariables);
+                jsonObject = JObject.Parse(renderedJson);
             }
+            else
+                jsonObject = accumulate;
+
+            ResolveJsonValues(jsonObject, variables);
+            UpdateDataTypes(jsonObject, fileConfig);
+
+            string configStr = jsonObject.ToString();
+
+            // Ensure that there are no variables in the final configuration string.
+            MatchCollection variableMatches = NestedVariablePattern().Matches(configStr);
+            if (variableMatches.Count > 0)
+            {
+                string variablesFound = string.Join(", ",
+                    variableMatches.Take(15).Select(m => m.Value));
+                throw new InvalidOperationException($"""
+                    Found {variableMatches.Count} variable(s) in the final JSON configuration.
+                    These need to be resolved.
+                    The variables include {variablesFound}.
+                    """);
+            }
+
+            yield return new GeneratedConfiguration(fileConfig.Name, configStr);
         }
     }
 
@@ -195,6 +215,18 @@ public sealed partial class ConfigurationBuilder
 
     private static void ResolveVariables(Dictionary<string, string> variables)
     {
+        // Ensure that there are no undefined variables.
+        IEnumerable<string> undefinedVariables = variables
+            .Where(v => v.Value.Equals("_UNDEFINED_", StringComparison.Ordinal))
+            .Select(v => v.Key);
+        if (undefinedVariables.Any())
+        {
+            throw new InvalidOperationException($"""
+                The following variables are still undefined.
+                {string.Join(", ", undefinedVariables)}.
+                """);
+        }
+
         Regex nestedVariablePattern = NestedVariablePattern();
 
         bool hasNestedVariables = true;
@@ -299,14 +331,13 @@ public sealed partial class ConfigurationBuilder
         }
     }
 
-    private void UpdateDataTypes(JObject jobject, AppSettings.FileConfigModel settings)
+    private static void UpdateDataTypes(JObject jobject, AppSettings.FileConfigModel settings)
     {
         Replace(settings.Name, jobject, settings.TypeTransforms.Boolean, s =>
-        {
-            if (!bool.TryParse(s, out bool boolValue))
-                throw new InvalidOperationException("Not a boolean.");
-            return new JValue(boolValue);
-        });
+            bool.TryParse(s, out bool boolValue)
+                ? new JValue(boolValue)
+                : throw new InvalidOperationException("Not a boolean."));
+
         Replace(settings.Name, jobject, settings.TypeTransforms.Number, s =>
         {
             if (long.TryParse(s, out long integralValue))
@@ -327,8 +358,7 @@ public sealed partial class ConfigurationBuilder
                 if (matchedToken is not JValue jvalue)
                 {
                     throw new InvalidOperationException($"""
-                        Matched a data type path {path} in file {fileName} to
-                        {matchedToken.Path}.
+                        Matched a data type path {path} in file {fileName} to {matchedToken.Path}.
                         However, this is not a value ({nameof(JValue)}), but is a {matchedToken.GetType().Name} instead.
                         """);
                 }

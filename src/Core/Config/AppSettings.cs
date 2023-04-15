@@ -21,6 +21,8 @@ internal sealed class AppSettings
             set => _name = value ?? throw new InvalidOperationException("Configuration file name cannot be null.");
         }
 
+        public bool IsTemplate { get; set; }
+
         public TypeTransformConfigModel TypeTransforms
         {
             get => _typeTransforms ??= new TypeTransformConfigModel();
