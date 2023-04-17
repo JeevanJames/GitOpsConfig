@@ -4,7 +4,7 @@
         <name>GitOpsConfig</name>
     </assembly>
     <members>
-        <member name="M:GitOpsConfig.ConfigurationBuilder.NestedVariablePattern">
+        <member name="M:GitOpsConfig.BaseBuilder.NestedVariablePattern">
             <remarks>
             Pattern explanation:<br/>
             <code>

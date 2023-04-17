@@ -3,40 +3,24 @@ using System.Text.RegularExpressions;
 
 using GitOpsConfig.Config;
 
-using IniFile;
-
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using Scriban;
 
 namespace GitOpsConfig;
 
-public sealed partial class ConfigurationBuilder
+public sealed class ConfigurationBuilder : BaseBuilder
 {
-    private readonly string _sharedDir;
-    private readonly string _appsDir;
-
     public ConfigurationBuilder(string? rootDir)
+        : base(rootDir)
     {
-        rootDir = Path.GetFullPath(rootDir ?? ".");
-        if (!Directory.Exists(rootDir))
-            throw new DirectoryNotFoundException($"Root directory {rootDir} not found.");
-
-        _appsDir = Path.Combine(rootDir, "apps");
-        if (!Directory.Exists(_appsDir))
-            throw new DirectoryNotFoundException($"Apps directory {_appsDir} not found.");
-
-        _sharedDir = Path.Combine(rootDir, "shared");
-        if (!Directory.Exists(_sharedDir))
-            throw new DirectoryNotFoundException($"Shared directory {_sharedDir} not found.");
     }
 
     public async IAsyncEnumerable<GeneratedConfiguration> GenerateAsync(string appName,
         IEnumerable<string> sections,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        string appDir = Path.Combine(_appsDir, appName);
+        string appDir = Path.Combine(AppsDir, appName);
         if (!Directory.Exists(appDir))
         {
             throw new DirectoryNotFoundException($"""
@@ -49,10 +33,9 @@ public sealed partial class ConfigurationBuilder
         AppSettings settings = await LoadSettings(appDir, appName);
 
         // Load and resolve the variables.
-        Dictionary<string, string> variables = await AggregateAsync(appDir, sections,
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            VariablesAggregator, cancellationToken);
-        ResolveVariables(variables);
+        VariablesBuilder variablesBuilder = new(RootDir);
+        IDictionary<string, string> variables = await variablesBuilder
+            .CollectAndResolveAsync(appName, sections, cancellationToken);
 
         // Dictionary containing the same variables, but where the keys are template friendly, i.e.
         // they use underscores instead of periods. We create it only on demand.
@@ -73,7 +56,7 @@ public sealed partial class ConfigurationBuilder
             JObject jsonObject;
             if (fileConfig.IsTemplate)
             {
-                // Resolve the JSON string as a scriban template.
+                // Resolve the JSON string as a Scriban template.
                 string jsonTemplate = accumulate.ToString();
                 Template template = Template.Parse(jsonTemplate);
                 templateVariables ??= variables.ToDictionary(
@@ -84,9 +67,13 @@ public sealed partial class ConfigurationBuilder
             else
                 jsonObject = accumulate;
 
+            // Resolve nested variables in the JSON values.
             ResolveJsonValues(jsonObject, variables);
+
+            // Convert any JSON values to booleans or numbers if they are configured as such.
             UpdateDataTypes(jsonObject, fileConfig);
 
+            // Convert the JSON object into a string.
             string configStr = jsonObject.ToString();
 
             // Ensure that there are no variables in the final configuration string.
@@ -112,7 +99,7 @@ public sealed partial class ConfigurationBuilder
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         IEnumerable<string> appNames = Directory
-            .EnumerateDirectories(_appsDir, "*", SearchOption.TopDirectoryOnly)
+            .EnumerateDirectories(AppsDir, "*", SearchOption.TopDirectoryOnly)
             .Select(dir => Path.GetFileName(dir))
             .Where(predicate);
 
@@ -132,136 +119,6 @@ public sealed partial class ConfigurationBuilder
         CancellationToken cancellationToken = default) =>
         GenerateAsync(_ => true, sections, cancellationToken);
 
-    private static async Task<AppSettings> LoadSettings(string appDir, string appName)
-    {
-        string settingsFilePath = Path.Combine(appDir, "__settings.json");
-        AppSettings? settings = File.Exists(settingsFilePath)
-            ? JsonConvert.DeserializeObject<AppSettings>(await File.ReadAllTextAsync(settingsFilePath))
-            : new AppSettings();
-
-        if (settings is null)
-            throw new InvalidOperationException($"Error reading from settings file for {appName} from {settingsFilePath}.");
-
-        if (settings.Files.Count == 0)
-        {
-            throw new InvalidOperationException(
-                $"App {appName} settings file at {settingsFilePath} does not specify any configuration files.");
-        }
-
-        return settings;
-    }
-
-    private async ValueTask<TAccumulate> AggregateAsync<TAccumulate>(string appDir,
-        IEnumerable<string> sections,
-        TAccumulate seed,
-        Func<TAccumulate, string, ValueTask<TAccumulate>> aggregatorFunc,
-        CancellationToken cancellationToken)
-    {
-        TAccumulate accumulate = seed;
-
-        string dir = _sharedDir;
-        cancellationToken.ThrowIfCancellationRequested();
-        accumulate = await aggregatorFunc(accumulate, dir);
-        foreach (string section in sections)
-        {
-            dir = Path.Combine(dir, section);
-            if (!Directory.Exists(dir))
-                break;
-
-            cancellationToken.ThrowIfCancellationRequested();
-            accumulate = await aggregatorFunc(accumulate, dir);
-        }
-
-        //TODO: If we hit the last section, then ensure that there are no further subdirectories
-
-        dir = appDir;
-        cancellationToken.ThrowIfCancellationRequested();
-        accumulate = await aggregatorFunc(accumulate, dir);
-        foreach (string section in sections)
-        {
-            dir = Path.Combine(dir, section);
-            if (!Directory.Exists(dir))
-                break;
-
-            cancellationToken.ThrowIfCancellationRequested();
-            accumulate = await aggregatorFunc(accumulate, dir);
-        }
-
-        //TODO: If we hit the last section, then ensure that there are no further subdirectories
-
-        return accumulate;
-    }
-
-    private static ValueTask<Dictionary<string, string>> VariablesAggregator(
-        Dictionary<string, string> variables,
-        string dir)
-    {
-        string variablesFilePath = Path.Combine(dir, "variables.ini");
-        if (!File.Exists(variablesFilePath))
-            return ValueTask.FromResult(variables);
-
-        Ini ini = new(new FileInfo(variablesFilePath), IniLoadSettings.ReadOnly);
-        foreach (Section section in ini)
-        {
-            foreach (Property property in section)
-            {
-                string variableName = $"{section.Name}.{property.Name}";
-                variables[variableName] = property.Value;
-            }
-        }
-
-        return ValueTask.FromResult(variables);
-    }
-
-    private static void ResolveVariables(Dictionary<string, string> variables)
-    {
-        // Ensure that there are no undefined variables.
-        IEnumerable<string> undefinedVariables = variables
-            .Where(v => v.Value.Equals("_UNDEFINED_", StringComparison.Ordinal))
-            .Select(v => v.Key);
-        if (undefinedVariables.Any())
-        {
-            throw new InvalidOperationException($"""
-                The following variables are still undefined.
-                {string.Join(", ", undefinedVariables)}.
-                """);
-        }
-
-        Regex nestedVariablePattern = NestedVariablePattern();
-
-        bool hasNestedVariables = true;
-        while (hasNestedVariables)
-        {
-            hasNestedVariables = false;
-            foreach (string key in variables.Keys.ToArray())
-            {
-                string value = variables[key];
-
-                variables[key] = nestedVariablePattern.Replace(value, match =>
-                {
-                    string nestedVariableKey = match.Groups["name"].Value;
-
-                    // If the nested variable key does not exist, throw an exception.
-                    if (!variables.TryGetValue(nestedVariableKey, out string? nestedVariableValue))
-                    {
-                        throw new InvalidOperationException(
-                            $"Variable {key} specifies a nested variable {nestedVariableKey}, which does not exist.");
-                    }
-
-                    // If the nested variable value has its own nested variables, then don't resolve
-                    // them now.
-                    if (nestedVariablePattern.IsMatch(nestedVariableValue))
-                    {
-                        hasNestedVariables = true;
-                        return match.Value;
-                    }
-
-                    return nestedVariableValue;
-                });
-            }
-        }
-    }
-
     private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir, string fileName)
     {
         string jsonFilePath = Path.Combine(dir, fileName);
@@ -280,7 +137,7 @@ public sealed partial class ConfigurationBuilder
         return accumulate;
     }
 
-    private static void ResolveJsonValues(JToken token, Dictionary<string, string> variables)
+    private static void ResolveJsonValues(JToken token, IDictionary<string, string> variables)
     {
         switch (token)
         {
@@ -368,8 +225,4 @@ public sealed partial class ConfigurationBuilder
             }
         }
     }
-
-    [GeneratedRegex(@"\$\((?<name>\w+(\.\w+)+)\)",
-        RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking | RegexOptions.Compiled, 1000)]
-    private static partial Regex NestedVariablePattern();
 }

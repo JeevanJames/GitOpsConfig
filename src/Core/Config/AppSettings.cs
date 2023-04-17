@@ -1,6 +1,6 @@
 ﻿namespace GitOpsConfig.Config;
 
-internal sealed class AppSettings
+public sealed class AppSettings
 {
     private List<FileConfigModel>? _files;
 
@@ -10,7 +10,7 @@ internal sealed class AppSettings
         set => _files = value;
     }
 
-    internal sealed class FileConfigModel
+    public sealed class FileConfigModel
     {
         private string? _name;
         private TypeTransformConfigModel? _typeTransforms;
@@ -30,7 +30,7 @@ internal sealed class AppSettings
         }
     }
 
-    internal sealed class TypeTransformConfigModel
+    public sealed class TypeTransformConfigModel
     {
         private List<string>? _boolean;
         private List<string>? _number;
