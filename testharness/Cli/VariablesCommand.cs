@@ -34,11 +34,11 @@ public sealed class VariablesCommand : BaseCommand
             string value = variables[name];
             Markup valueMarkup;
             if (string.IsNullOrWhiteSpace(value))
-                valueMarkup = new Markup("[EMPTY/WHITESPACE]", new Style(Orange1));
+                valueMarkup = new Markup("[EMPTY/WHITESPACE]".EscapeMarkup(), new Style(Orange1));
             else if (value == "_UNDEFINED_")
                 valueMarkup = new Markup("UNDEFINED", new Style(Red1));
             else
-                valueMarkup = new Markup(value, new Style(Green1));
+                valueMarkup = new Markup(value.EscapeMarkup(), new Style(Green1));
 
             table.AddRow(
                 new Markup(nameParts[0], new Style(Cyan1)),
