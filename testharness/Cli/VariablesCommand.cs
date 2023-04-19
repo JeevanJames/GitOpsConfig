@@ -1,5 +1,4 @@
 ﻿using Aargh;
-using Aargh.Transformers;
 
 using Spectre.Console;
 
@@ -7,35 +6,17 @@ namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("variables", "v",
     HelpText = "Displays all variables for a specified app and sections.")]
-public sealed class VariablesCommand : Command
+public sealed class VariablesCommand : BaseCommand
 {
-    [Option("directory", "dir", "d", Optional = true,
-        HelpParamName = "ROOT DIR")]
-    [AsDirectory(shouldExist: true)]
-    [DefaultValueFallback(".")]
-    public required DirectoryInfo Directory { get; set; }
-
     [Flag("resolve", "r")]
     public bool Resolve { get; set; }
 
     public override async ValueTask HandleCommandAsync(IParseResult parseResult)
     {
-        string appsDir = Path.Combine(Directory.FullName, "apps");
+        string app = PromptForApp();
+        string section = PromptForSection(app);
 
-        IEnumerable<string> apps = SectionDiscoverer.EnumerateApplications(appsDir);
-        string app = Prompt(new SelectionPrompt<string>()
-            .Title("Select app")
-            .PageSize(10)
-            .AddChoices(apps));
-
-        IEnumerable<string> sectionsSet = SectionDiscoverer.DiscoverSectionsForApp(appsDir, app)
-            .Select(sections => string.Join('/', sections));
-        string section = Prompt(new SelectionPrompt<string>()
-            .Title("Select section combination")
-            .PageSize(10)
-            .AddChoices(sectionsSet));
-
-        VariablesBuilder builder = new(Directory.FullName);
+        VariablesBuilder builder = new(RootDir.FullName);
         string[] sections = section.Split('/',
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         IDictionary<string, string> variables = Resolve

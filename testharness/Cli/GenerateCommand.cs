@@ -1,4 +1,5 @@
 ﻿using Aargh;
+using Aargh.Transformers;
 
 using JsonDiffPatchDotNet;
 
@@ -7,17 +8,15 @@ using Newtonsoft.Json.Linq;
 using Spectre.Console;
 using Spectre.Console.Json;
 
-using static Spectre.Console.AnsiConsole;
-using static Spectre.Console.Color;
-
 namespace GitOpsConfig.TestHarness.Cli;
 
-[Command("default")]
-public sealed class DefaultCommand : Command
+[Command("generate", "g",
+    HelpText = "Generates all the configurations")]
+public sealed class GenerateCommand : BaseCommand
 {
     public override async ValueTask HandleCommandAsync(IParseResult parseResult)
     {
-        const string rootDir = @"D:\Temp\config";
+        string rootDir = RootDir.FullName;
         string appsDir = Path.Combine(rootDir, "apps");
         string outputDir = Path.Combine(rootDir, "_processing", "output");
         string referenceDir = Path.Combine(rootDir, "_processing", "references");

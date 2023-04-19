@@ -1,13 +1,10 @@
 {
   "profiles": {
     "CLI": {
-      "commandName": "Project"
-    },
-    "Windows Terminal": {
-      "commandName": "Executable",
-      "executablePath": "C:\\Users\\Jeevan\\AppData\\Local\\Microsoft\\WindowsApps\\wt.exe",
-      "commandLineArgs": "dotnet.exe run --project $(ProjectPath)",
-      "workingDirectory": "$(ProjectDir)"
+      "commandName": "Project",
+      "environmentVariables": {
+        "GITOPS_CONFIG_ROOTDIR": "D:\\Temp\\Config"
+      }
     }
   }
 }
