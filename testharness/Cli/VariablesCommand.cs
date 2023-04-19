@@ -32,9 +32,14 @@ public sealed class VariablesCommand : BaseCommand
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             string value = variables[name];
-            Markup valueMarkup = value == "_UNDEFINED_"
-                ? new("UNDEFINED", new Style(Red1))
-                : new(value, new Style(Green1));
+            Markup valueMarkup;
+            if (string.IsNullOrWhiteSpace(value))
+                valueMarkup = new Markup("[EMPTY/WHITESPACE]", new Style(Orange1));
+            else if (value == "_UNDEFINED_")
+                valueMarkup = new Markup("UNDEFINED", new Style(Red1));
+            else
+                valueMarkup = new Markup(value, new Style(Green1));
+
             table.AddRow(
                 new Markup(nameParts[0], new Style(Cyan1)),
                 new Markup(nameParts[1], new Style(Yellow1)),
