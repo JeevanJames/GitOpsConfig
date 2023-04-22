@@ -52,6 +52,8 @@ public sealed class Variables : KeyedCollection<string, Variable>
                     if (nestedVariablePattern.IsMatch(nestedVariable.ResolvedValue))
                     {
                         hasNestedVariables = true;
+                        nestedVariable.AddUsage(new VariableUsage(
+                            variable.Name, variable.CurrentUnresolvedValue, VariableUsageType.Variable));
                         return match.Value;
                     }
 
@@ -117,4 +119,22 @@ public sealed class Variable
 
 public sealed record VariableSource(string SourcePath, string UnresolvedValue);
 
-public sealed record VariableUsage(string FileName, string ContentPath);
+/// <summary>
+///     Represents an usage of a variable. This could be a usage from a configuration file or from
+///     within another variable, as a nested variable.
+/// </summary>
+/// <param name="Name">
+///     The name of the configuration file or another variable, which uses the variable.
+/// </param>
+/// <param name="ContentPath">
+///     The path within the configuration file or the name of the variable that contains this variable
+///     as a nested variable.
+/// </param>
+/// <param name="Type">The type of variable usage - configuration file or nested variable.</param>
+public sealed record VariableUsage(string Name, string ContentPath, VariableUsageType Type);
+
+public enum VariableUsageType
+{
+    Variable,
+    File,
+}

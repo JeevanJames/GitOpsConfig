@@ -176,7 +176,8 @@ public sealed class ConfigurationBuilder : BaseBuilder
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
-                        nestedVariable.AddUsage(new VariableUsage(fileConfig.Name, jvalue.Path));
+                        nestedVariable.AddUsage(new VariableUsage(
+                            fileConfig.Name, jvalue.Path, VariableUsageType.File));
                         return nestedVariable.ResolvedValue;
                     });
 
