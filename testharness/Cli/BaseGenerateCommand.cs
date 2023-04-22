@@ -63,11 +63,17 @@ public abstract class BaseGenerateCommand : BaseCommand
         string sectionStr = string.Join('.', sections);
         string fileName = $"{app}_{sectionStr}_{config.FileName}";
         string filePath = Path.Combine(OutputDir, fileName);
-
         await File.WriteAllTextAsync(filePath, config.Content);
 
         string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
         string comparisonFile = Path.Combine(ComparisonDir, fileName);
         await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
+
+        if (comparison is null)
+            MarkupLine($"[{Orange1}]No reference file found[/]");
+        else if (string.IsNullOrWhiteSpace(comparison))
+            MarkupLine($"[{Green1}]No differences[/]");
+        else
+            MarkupLine($"[{Red1}]Differences found[/]");
     }
 }
