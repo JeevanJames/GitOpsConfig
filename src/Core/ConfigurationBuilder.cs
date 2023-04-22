@@ -35,7 +35,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
         // Load and resolve the variables.
         VariablesBuilder variablesBuilder = new(RootDir);
-        IDictionary<string, string> variables = await variablesBuilder
+        Variables variables = await variablesBuilder
             .CollectAndResolveAsync(appName, sections, cancellationToken);
 
         // Dictionary containing the same variables, but where the keys are template friendly, i.e.
@@ -48,7 +48,11 @@ public sealed class ConfigurationBuilder : BaseBuilder
             cancellationToken.ThrowIfCancellationRequested();
 
             if (fileConfig.IsTemplate && templateVariables is null)
-                templateVariables = variables.ToDictionary(kvp => kvp.Key.Replace('.', '_'), kvp => kvp.Value);
+            {
+                templateVariables = variables.ToDictionary(
+                    variable => variable.Name.Replace('.', '_'),
+                    variable => variable.ResolvedValue);
+            }
 
             // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
@@ -67,7 +71,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
             string configStr = accumulate.ToString();
 
             // Ensure that there are no variables in the final configuration string.
-            MatchCollection variableMatches = NestedVariablePattern().Matches(configStr);
+            MatchCollection variableMatches = Patterns.NestedVariable().Matches(configStr);
             if (variableMatches.Count > 0)
             {
                 string variablesFound = string.Join(", ",
@@ -125,9 +129,9 @@ public sealed class ConfigurationBuilder : BaseBuilder
             Template template = Template.Parse(fileContent);
             if (template.HasErrors)
             {
-                var errorMessage = new StringBuilder($"Error in template '{jsonFilePath}'.").AppendLine();
+                StringBuilder errorMessage = new StringBuilder($"Error in template '{jsonFilePath}'.").AppendLine();
                 for (int i = 0; i < template.Messages.Count; i++)
-                    errorMessage.AppendLine(template.Messages[i].Message);
+                    errorMessage.AppendLine($"{i}. {template.Messages[i].Message}");
                 throw new InvalidOperationException(errorMessage.ToString());
             }
 
@@ -144,20 +148,20 @@ public sealed class ConfigurationBuilder : BaseBuilder
         return accumulate;
     }
 
-    private static void ResolveJsonValues(JToken token, IDictionary<string, string> variables)
+    private static void ResolveJsonValues(JToken token, Variables variables)
     {
         switch (token)
         {
             case JValue jvalue:
                 string? value = jvalue.Value<string>();
-                if (value is not null && NestedVariablePattern().IsMatch(value))
+                if (value is not null && Patterns.NestedVariable().IsMatch(value))
                 {
-                    value = NestedVariablePattern().Replace(value, match =>
+                    value = Patterns.NestedVariable().Replace(value, match =>
                     {
                         string nestedVariableKey = match.Groups["name"].Value;
 
                         // If the nested variable key does not exist, throw an exception.
-                        if (!variables.TryGetValue(nestedVariableKey, out string? nestedVariableValue))
+                        if (!variables.TryGetValue(nestedVariableKey, out Variable? nestedVariable))
                         {
                             throw new InvalidOperationException(
                                 $"Nested variable key {nestedVariableKey} does not exist.");
@@ -165,13 +169,13 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
                         // If the nested variable value has its own nested variables, then don't resolve
                         // them now.
-                        if (NestedVariablePattern().IsMatch(nestedVariableValue))
+                        if (Patterns.NestedVariable().IsMatch(nestedVariable.ResolvedValue))
                         {
                             throw new InvalidOperationException(
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
-                        return nestedVariableValue;
+                        return nestedVariable.ResolvedValue;
                     });
 
                     jvalue.Replace(new JValue(value));

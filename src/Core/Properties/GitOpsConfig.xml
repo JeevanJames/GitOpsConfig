@@ -4,7 +4,7 @@
         <name>GitOpsConfig</name>
     </assembly>
     <members>
-        <member name="M:GitOpsConfig.BaseBuilder.NestedVariablePattern">
+        <member name="M:GitOpsConfig.Patterns.NestedVariable">
             <remarks>
             Pattern explanation:<br/>
             <code>
@@ -18,11 +18,11 @@
             </code>
             </remarks>
         </member>
-        <member name="T:System.Text.RegularExpressions.Generated.NestedVariablePattern_0">
-            <summary>Caches a <see cref="T:System.Text.RegularExpressions.Regex"/> instance for the NestedVariablePattern method.</summary>
+        <member name="T:System.Text.RegularExpressions.Generated.NestedVariable_0">
+            <summary>Caches a <see cref="T:System.Text.RegularExpressions.Regex"/> instance for the NestedVariable method.</summary>
             <remarks>A custom Regex-derived type could not be generated because RegexOptions.NonBacktracking isn't supported.</remarks>
         </member>
-        <member name="F:System.Text.RegularExpressions.Generated.NestedVariablePattern_0.Instance">
+        <member name="F:System.Text.RegularExpressions.Generated.NestedVariable_0.Instance">
             <summary>Cached, thread-safe singleton instance.</summary>
         </member>
     </members>

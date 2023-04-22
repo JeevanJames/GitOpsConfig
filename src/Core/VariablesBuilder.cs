@@ -11,7 +11,7 @@ public sealed class VariablesBuilder : BaseBuilder
     {
     }
 
-    public async ValueTask<IDictionary<string, string>> CollectAsync(string appName,
+    public async ValueTask<Variables> CollectAsync(string appName,
         IEnumerable<string> sections,
         CancellationToken cancellationToken = default)
     {
@@ -25,25 +25,22 @@ public sealed class VariablesBuilder : BaseBuilder
         }
 
         // Load and resolve the variables.
-        Dictionary<string, string> variables = await AggregateAsync(appDir, sections,
-            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
-            VariablesAggregator, cancellationToken);
+        Variables variables = await AggregateAsync(appDir, sections,
+            new Variables(), VariablesAggregator, cancellationToken);
 
         return variables;
     }
 
-    public async ValueTask<IDictionary<string, string>> CollectAndResolveAsync(string appName,
+    public async ValueTask<Variables> CollectAndResolveAsync(string appName,
         IEnumerable<string> sections,
         CancellationToken cancellationToken = default)
     {
-        IDictionary<string, string> variables = await CollectAsync(appName, sections, cancellationToken);
-        ResolveVariables(variables);
+        Variables variables = await CollectAsync(appName, sections, cancellationToken);
+        variables.Resolve();
         return variables;
     }
 
-    private static ValueTask<Dictionary<string, string>> VariablesAggregator(
-        Dictionary<string, string> variables,
-        string dir)
+    private static ValueTask<Variables> VariablesAggregator(Variables variables, string dir)
     {
         string variablesFilePath = Path.Combine(dir, "variables.ini");
         if (!File.Exists(variablesFilePath))
@@ -55,59 +52,17 @@ public sealed class VariablesBuilder : BaseBuilder
             foreach (Property property in section)
             {
                 string variableName = $"{section.Name}.{property.Name}";
-                variables[variableName] = property.Value;
+
+                if (!variables.TryGetValue(variableName, out Variable? variable))
+                {
+                    variable = new Variable(variableName);
+                    variables.Add(variable);
+                }
+
+                variable.AddSource(new VariableSource(dir, property.Value));
             }
         }
 
         return ValueTask.FromResult(variables);
-    }
-
-    private static void ResolveVariables(IDictionary<string, string> variables)
-    {
-        // Ensure that there are no undefined variables.
-        IEnumerable<string> undefinedVariables = variables
-            .Where(v => v.Value.Equals("_UNDEFINED_", StringComparison.Ordinal))
-            .Select(v => v.Key);
-        if (undefinedVariables.Any())
-        {
-            throw new InvalidOperationException($"""
-                The following variables are still undefined.
-                {string.Join(", ", undefinedVariables)}.
-                """);
-        }
-
-        Regex nestedVariablePattern = NestedVariablePattern();
-
-        bool hasNestedVariables = true;
-        while (hasNestedVariables)
-        {
-            hasNestedVariables = false;
-            foreach (string key in variables.Keys.ToArray())
-            {
-                string value = variables[key];
-
-                variables[key] = nestedVariablePattern.Replace(value, match =>
-                {
-                    string nestedVariableKey = match.Groups["name"].Value;
-
-                    // If the nested variable key does not exist, throw an exception.
-                    if (!variables.TryGetValue(nestedVariableKey, out string? nestedVariableValue))
-                    {
-                        throw new InvalidOperationException(
-                            $"Variable {key} specifies a nested variable {nestedVariableKey}, which does not exist.");
-                    }
-
-                    // If the nested variable value has its own nested variables, then don't resolve
-                    // them now.
-                    if (nestedVariablePattern.IsMatch(nestedVariableValue))
-                    {
-                        hasNestedVariables = true;
-                        return match.Value;
-                    }
-
-                    return nestedVariableValue;
-                });
-            }
-        }
     }
 }

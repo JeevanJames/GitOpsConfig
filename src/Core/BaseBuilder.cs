@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace GitOpsConfig;
 
-public abstract partial class BaseBuilder
+public abstract class BaseBuilder
 {
     protected BaseBuilder(string? rootDir)
     {
@@ -88,8 +88,11 @@ public abstract partial class BaseBuilder
 
         return settings;
     }
+}
 
+internal static partial class Patterns
+{
     [GeneratedRegex(@"\$\((?<name>\w+(\.\w+)+)\)",
         RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking | RegexOptions.Compiled, 1000)]
-    protected static partial Regex NestedVariablePattern();
+    internal static partial Regex NestedVariable();
 }

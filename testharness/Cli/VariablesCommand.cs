@@ -19,19 +19,19 @@ public sealed class VariablesCommand : BaseCommand
         VariablesBuilder builder = new(RootDir.FullName);
         string[] sections = section.Split('/',
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        IDictionary<string, string> variables = Resolve
+        Variables variables = Resolve
             ? await builder.CollectAndResolveAsync(app, sections)
             : await builder.CollectAsync(app, sections);
 
         Table table = new Table()
             .AddColumns("Section", "Variable", "Value");
 
-        foreach (string name in variables.Keys.OrderBy(k => k))
+        foreach (Variable variable in variables.OrderBy(v => v.Name))
         {
-            string[] nameParts = name.Split('.', 2,
+            string[] nameParts = variable.Name.Split('.', 2,
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            string value = variables[name];
+            string value = Resolve ? variable.ResolvedValue : variable.CurrentUnresolvedValue;
             Markup valueMarkup;
             if (string.IsNullOrWhiteSpace(value))
                 valueMarkup = new Markup("[EMPTY/WHITESPACE]".EscapeMarkup(), new Style(Orange1));
