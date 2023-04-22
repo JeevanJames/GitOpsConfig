@@ -14,7 +14,7 @@ public sealed class VariablesCommand : BaseCommand
     public override async ValueTask HandleCommandAsync(IParseResult parseResult)
     {
         string app = PromptForApp();
-        string section = PromptForSection(app);
+        string section = PromptForSections(app).First();
 
         VariablesBuilder builder = new(RootDir.FullName);
         string[] sections = section.Split('/',

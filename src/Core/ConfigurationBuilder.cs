@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 
 using GitOpsConfig.Config;
@@ -46,35 +47,24 @@ public sealed class ConfigurationBuilder : BaseBuilder
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            if (fileConfig.IsTemplate && templateVariables is null)
+                templateVariables = variables.ToDictionary(kvp => kvp.Key.Replace('.', '_'), kvp => kvp.Value);
+
             // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
-                (acc, dir) => JsonAggregator(acc, dir, fileConfig.Name), cancellationToken);
+                (acc, dir) => JsonAggregator(acc, dir, fileConfig, templateVariables), cancellationToken);
 
             if (accumulate is null)
                 continue;
 
-            JObject jsonObject;
-            if (fileConfig.IsTemplate)
-            {
-                // Resolve the JSON string as a Scriban template.
-                string jsonTemplate = accumulate.ToString();
-                Template template = Template.Parse(jsonTemplate);
-                templateVariables ??= variables.ToDictionary(
-                    kvp => kvp.Key.Replace('.', '_'), kvp => kvp.Value);
-                string renderedJson = await template.RenderAsync(templateVariables);
-                jsonObject = JObject.Parse(renderedJson);
-            }
-            else
-                jsonObject = accumulate;
-
             // Resolve nested variables in the JSON values.
-            ResolveJsonValues(jsonObject, variables);
+            ResolveJsonValues(accumulate, variables);
 
             // Convert any JSON values to booleans or numbers if they are configured as such.
-            UpdateDataTypes(jsonObject, fileConfig);
+            UpdateDataTypes(accumulate, fileConfig);
 
             // Convert the JSON object into a string.
-            string configStr = jsonObject.ToString();
+            string configStr = accumulate.ToString();
 
             // Ensure that there are no variables in the final configuration string.
             MatchCollection variableMatches = NestedVariablePattern().Matches(configStr);
@@ -119,15 +109,32 @@ public sealed class ConfigurationBuilder : BaseBuilder
         CancellationToken cancellationToken = default) =>
         GenerateAsync(_ => true, sections, cancellationToken);
 
-    private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir, string fileName)
+    private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir,
+        AppSettings.FileConfigModel fileConfig,
+        Dictionary<string, string>? templateVariables)
     {
-        string jsonFilePath = Path.Combine(dir, fileName);
+        string jsonFilePath = Path.Combine(dir, fileConfig.Name);
         if (!File.Exists(jsonFilePath))
             return accumulate;
 
         accumulate ??= new JObject();
 
-        JObject jsonObj = JObject.Parse(await File.ReadAllTextAsync(jsonFilePath));
+        string fileContent = await File.ReadAllTextAsync(jsonFilePath);
+        if (fileConfig.IsTemplate && templateVariables is not null)
+        {
+            Template template = Template.Parse(fileContent);
+            if (template.HasErrors)
+            {
+                var errorMessage = new StringBuilder($"Error in template '{jsonFilePath}'.").AppendLine();
+                for (int i = 0; i < template.Messages.Count; i++)
+                    errorMessage.AppendLine(template.Messages[i].Message);
+                throw new InvalidOperationException(errorMessage.ToString());
+            }
+
+            fileContent = await template.RenderAsync(templateVariables);
+        }
+
+        JObject jsonObj = JObject.Parse(fileContent);
         accumulate.Merge(jsonObj, new JsonMergeSettings
         {
             MergeArrayHandling = MergeArrayHandling.Union,

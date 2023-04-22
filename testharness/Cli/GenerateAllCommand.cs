@@ -1,5 +1,4 @@
 ﻿using Aargh;
-using Aargh.Transformers;
 
 using JsonDiffPatchDotNet;
 
@@ -10,9 +9,9 @@ using Spectre.Console.Json;
 
 namespace GitOpsConfig.TestHarness.Cli;
 
-[Command("generate", "g",
-    HelpText = "Generates all the configurations")]
-public sealed class GenerateCommand : BaseCommand
+[Command("generate-all", "g",
+    HelpText = "Generates all the configurations for all apps in the specified root directory.")]
+public sealed class GenerateAllCommand : BaseCommand
 {
     public override async ValueTask HandleCommandAsync(IParseResult parseResult)
     {
@@ -85,6 +84,6 @@ public sealed class GenerateCommand : BaseCommand
 
         JsonDiffPatch differ = new();
         JToken diff = differ.Diff(reference, output);
-        return diff.ToString();
+        return diff?.ToString();
     }
 }
