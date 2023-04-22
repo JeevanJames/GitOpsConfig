@@ -8,7 +8,8 @@ namespace GitOpsConfig.TestHarness.Cli;
 public abstract class BaseCommand : Command
 {
     [Option("directory", "dir", "d", Optional = true,
-        HelpParamName = "ROOT DIR")]
+        HelpParamName = "ROOT DIR",
+        HelpText = "Root directory for the configuration.")]
     [AsDirectory(shouldExist: true)]
     [EnvironmentFallback(0, "GITOPS_CONFIG_ROOTDIR")]
     [DefaultValueFallback(1, ".")]

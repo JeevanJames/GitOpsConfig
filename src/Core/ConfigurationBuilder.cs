@@ -62,7 +62,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
                 continue;
 
             // Resolve nested variables in the JSON values.
-            ResolveJsonValues(accumulate, variables);
+            ResolveJsonValues(accumulate, variables, fileConfig);
 
             // Convert any JSON values to booleans or numbers if they are configured as such.
             UpdateDataTypes(accumulate, fileConfig);
@@ -148,7 +148,8 @@ public sealed class ConfigurationBuilder : BaseBuilder
         return accumulate;
     }
 
-    private static void ResolveJsonValues(JToken token, Variables variables)
+    private static void ResolveJsonValues(JToken token, Variables variables,
+        AppSettings.FileConfigModel fileConfig)
     {
         switch (token)
         {
@@ -175,6 +176,8 @@ public sealed class ConfigurationBuilder : BaseBuilder
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
+                        nestedVariable.AddUsage(new VariableUsage(fileConfig.Name,
+                            string.Empty, jvalue.Path));
                         return nestedVariable.ResolvedValue;
                     });
 
@@ -186,12 +189,12 @@ public sealed class ConfigurationBuilder : BaseBuilder
             case JObject jobject:
                 JProperty[] properties = jobject.Properties().ToArray();
                 for (int i = 0; i < properties.Length; i++)
-                    ResolveJsonValues(properties[i].Value, variables);
+                    ResolveJsonValues(properties[i].Value, variables, fileConfig);
                 break;
 
             case JArray jarray:
                 for (int i = 0; i < jarray.Count; i++)
-                    ResolveJsonValues(jarray[i], variables);
+                    ResolveJsonValues(jarray[i], variables, fileConfig);
                 break;
 
             default:

@@ -1,42 +1,23 @@
 ﻿using Aargh;
 
-using JsonDiffPatchDotNet;
-
-using Newtonsoft.Json.Linq;
-
 using Spectre.Console;
 using Spectre.Console.Json;
 
 namespace GitOpsConfig.TestHarness.Cli;
 
-[Command("generate-all", "g",
+[Command("generate-all", "ga",
     HelpText = "Generates all the configurations for all apps in the specified root directory.")]
-public sealed class GenerateAllCommand : BaseCommand
+public sealed class GenerateAllCommand : BaseGenerateCommand
 {
-    public override async ValueTask HandleCommandAsync(IParseResult parseResult)
+    protected override async ValueTask GenerateAsync(string rootDir)
     {
-        string rootDir = RootDir.FullName;
-        string appsDir = Path.Combine(rootDir, "apps");
-        string outputDir = Path.Combine(rootDir, "_processing", "output");
-        string referenceDir = Path.Combine(rootDir, "_processing", "references");
-
-        // Ensure output directory exists and delete any files in it.
-        if (!Directory.Exists(outputDir))
-            Directory.CreateDirectory(outputDir);
-        string[] outputFiles = Directory.GetFiles(outputDir, "*", SearchOption.TopDirectoryOnly);
-        foreach (string outputFile in outputFiles)
-            File.Delete(outputFile);
-
-        if (!Directory.Exists(referenceDir))
-            Directory.CreateDirectory(referenceDir);
-
         ConfigurationBuilder builder = new(rootDir);
 
-        foreach (string appName in SectionDiscoverer.EnumerateApplications(appsDir))
+        foreach (string appName in SectionDiscoverer.EnumerateApplications(AppsDir))
         {
             Write(new Rule(appName).RuleStyle(new Style(Yellow1)));
 
-            foreach (string[] sectionSet in SectionDiscoverer.DiscoverSectionsForApp(appsDir, appName))
+            foreach (string[] sectionSet in SectionDiscoverer.DiscoverSectionsForApp(AppsDir, appName))
             {
                 try
                 {
@@ -45,22 +26,16 @@ public sealed class GenerateAllCommand : BaseCommand
                         string sectionStr = string.Join('.', sectionSet);
                         string displayFileName =
                             $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
+                        MarkupLine(displayFileName);
 
                         string fileName = $"{appName}_{sectionStr}_{config.FileName}";
-                        string filePath = Path.Combine(outputDir, fileName);
+                        string filePath = Path.Combine(OutputDir, fileName);
 
                         await File.WriteAllTextAsync(filePath, config.Content);
 
-                        string? comparison = CompareConfigs(outputDir, referenceDir, fileName);
-                        if (comparison is null)
-                        {
-                            MarkupLine($"[{Orange1}]No reference file - [/]{displayFileName}");
-                        }
-                        else
-                        {
-                            JsonText jsonText = new(comparison);
-                            Write(new Panel(jsonText).Header(displayFileName));
-                        }
+                        string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
+                        string comparisonFile = Path.Combine(ComparisonDir, fileName);
+                        await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
                     }
                 }
                 catch (Exception ex)
@@ -70,20 +45,34 @@ public sealed class GenerateAllCommand : BaseCommand
             }
         }
     }
+}
 
-    private static string? CompareConfigs(string outputDir, string referenceDir, string fileName)
+[Command("generate", "g",
+    HelpText = "Generates the configurations for the specified apps.")]
+public sealed class GenerateCommand : BaseGenerateCommand
+{
+    protected override async ValueTask GenerateAsync(string rootDir)
     {
-        string referenceFilePath = Path.Combine(referenceDir, fileName);
-        if (!File.Exists(referenceFilePath))
-            return null;
+        string app = PromptForApp();
+        string section = PromptForSection(app);
+        string[] sections = section.Split('/');
 
-        string outputFilePath = Path.Combine(outputDir, fileName);
+        ConfigurationBuilder builder = new(rootDir);
+        await foreach (GeneratedConfiguration config in builder.GenerateAsync(app, sections))
+        {
+            string sectionStr = string.Join('.', sections);
+            string displayFileName =
+                $"[{Green1}]{app}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
+            MarkupLine(displayFileName);
 
-        JObject reference = JObject.Parse(File.ReadAllText(referenceFilePath));
-        JObject output = JObject.Parse(File.ReadAllText(outputFilePath));
+            string fileName = $"{app}_{sectionStr}_{config.FileName}";
+            string filePath = Path.Combine(OutputDir, fileName);
 
-        JsonDiffPatch differ = new();
-        JToken diff = differ.Diff(reference, output);
-        return diff?.ToString();
+            await File.WriteAllTextAsync(filePath, config.Content);
+
+            string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
+            string comparisonFile = Path.Combine(ComparisonDir, fileName);
+            await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
+        }
     }
 }
