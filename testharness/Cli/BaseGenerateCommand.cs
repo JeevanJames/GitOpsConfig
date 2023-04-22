@@ -52,4 +52,22 @@ public abstract class BaseGenerateCommand : BaseCommand
         JToken diff = differ.Diff(reference, output);
         return diff?.ToString();
     }
+
+    protected async Task HandleConfig(GeneratedConfiguration config, string app, string[] sections)
+    {
+        string displaySection = string.Join('/', sections);
+        string displayFileName =
+            $"[{Green1}]{app}[/] | [{Magenta1}]{displaySection}[/] | [{Yellow1}]{config.FileName}[/]";
+        MarkupLine(displayFileName);
+
+        string sectionStr = string.Join('.', sections);
+        string fileName = $"{app}_{sectionStr}_{config.FileName}";
+        string filePath = Path.Combine(OutputDir, fileName);
+
+        await File.WriteAllTextAsync(filePath, config.Content);
+
+        string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
+        string comparisonFile = Path.Combine(ComparisonDir, fileName);
+        await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
+    }
 }

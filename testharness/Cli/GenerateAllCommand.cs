@@ -22,21 +22,7 @@ public sealed class GenerateAllCommand : BaseGenerateCommand
                 try
                 {
                     await foreach (GeneratedConfiguration config in builder.GenerateAsync(appName, sectionSet))
-                    {
-                        string sectionStr = string.Join('.', sectionSet);
-                        string displayFileName =
-                            $"[{Green1}]{appName}[/]_[{Magenta1}]{sectionStr}[/]_[{Yellow1}]{config.FileName}[/]";
-                        MarkupLine(displayFileName);
-
-                        string fileName = $"{appName}_{sectionStr}_{config.FileName}";
-                        string filePath = Path.Combine(OutputDir, fileName);
-
-                        await File.WriteAllTextAsync(filePath, config.Content);
-
-                        string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
-                        string comparisonFile = Path.Combine(ComparisonDir, fileName);
-                        await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
-                    }
+                        await HandleConfig(config, appName, sectionSet);
                 }
                 catch (Exception ex)
                 {
