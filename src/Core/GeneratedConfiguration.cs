@@ -2,15 +2,18 @@
 
 public sealed class GeneratedConfiguration : IEquatable<GeneratedConfiguration>
 {
-    internal GeneratedConfiguration(string fileName, string content)
+    internal GeneratedConfiguration(string fileName, string content, Variables variables)
     {
         FileName = fileName ?? throw new ArgumentNullException(nameof(fileName));
         Content = content ?? throw new ArgumentNullException(nameof(content));
+        Variables = variables ?? throw new ArgumentNullException(nameof(variables));
     }
 
     public string FileName { get; }
 
     public string Content { get; }
+
+    public Variables Variables { get; }
 
     public bool Equals(GeneratedConfiguration? other)
     {

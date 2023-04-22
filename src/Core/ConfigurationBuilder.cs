@@ -83,7 +83,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
                     """);
             }
 
-            yield return new GeneratedConfiguration(fileConfig.Name, configStr);
+            yield return new GeneratedConfiguration(fileConfig.Name, configStr, variables);
         }
     }
 
@@ -176,8 +176,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
-                        nestedVariable.AddUsage(new VariableUsage(fileConfig.Name,
-                            string.Empty, jvalue.Path));
+                        nestedVariable.AddUsage(new VariableUsage(fileConfig.Name, jvalue.Path));
                         return nestedVariable.ResolvedValue;
                     });
 

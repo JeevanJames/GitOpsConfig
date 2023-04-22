@@ -117,4 +117,4 @@ public sealed class Variable
 
 public sealed record VariableSource(string SourcePath, string UnresolvedValue);
 
-public sealed record VariableUsage(string FileName, string SourcePath, string ContentPath);
+public sealed record VariableUsage(string FileName, string ContentPath);
