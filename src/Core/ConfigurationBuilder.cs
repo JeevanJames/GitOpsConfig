@@ -38,25 +38,14 @@ public sealed class ConfigurationBuilder : BaseBuilder
         Variables variables = await variablesBuilder
             .CollectAndResolveAsync(appName, sections, cancellationToken);
 
-        // Dictionary containing the same variables, but where the keys are template friendly, i.e.
-        // they use underscores instead of periods. We create it only on demand.
-        Dictionary<string, string>? templateVariables = null;
-
         // Process each file for this app.
         foreach (AppSettings.FileConfigModel fileConfig in settings.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (fileConfig.IsTemplate && templateVariables is null)
-            {
-                templateVariables = variables.ToDictionary(
-                    variable => variable.Name.Replace('.', '_'),
-                    variable => variable.Value);
-            }
-
             // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
-                (acc, dir, _) => JsonAggregator(acc, dir, fileConfig, templateVariables), cancellationToken);
+                (acc, dir, _) => JsonAggregator(acc, dir, fileConfig, variables), cancellationToken);
 
             if (accumulate is null)
                 continue;
@@ -115,7 +104,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
     private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir,
         AppSettings.FileConfigModel fileConfig,
-        Dictionary<string, string>? templateVariables)
+        Variables variables)
     {
         string jsonFilePath = Path.Combine(dir, fileConfig.Name);
         if (!File.Exists(jsonFilePath))
@@ -124,7 +113,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
         accumulate ??= new JObject();
 
         string fileContent = await File.ReadAllTextAsync(jsonFilePath);
-        if (fileConfig.IsTemplate && templateVariables is not null)
+        if (fileConfig.IsTemplate)
         {
             Template template = Template.Parse(fileContent);
             if (template.HasErrors)
@@ -135,7 +124,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
                 throw new InvalidOperationException(errorMessage.ToString());
             }
 
-            fileContent = await template.RenderAsync(templateVariables);
+            fileContent = await template.RenderAsync(variables.GetTemplateVariables());
         }
 
         JObject jsonObj = JObject.Parse(fileContent);

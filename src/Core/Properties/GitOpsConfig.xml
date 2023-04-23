@@ -18,6 +18,11 @@
             </code>
             </remarks>
         </member>
+        <member name="P:GitOpsConfig.Variable.Value">
+            <summary>
+                Gets the final resolved value for this variable.
+            </summary>
+        </member>
         <member name="T:GitOpsConfig.VariableSource">
             <summary>
                 The source of a variable.

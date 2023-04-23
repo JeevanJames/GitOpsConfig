@@ -6,6 +6,8 @@ namespace GitOpsConfig;
 
 public sealed class Variables : KeyedCollection<string, Variable>
 {
+    private IReadOnlyDictionary<string, string>? _templateVariables;
+
     public Variables()
         : base(StringComparer.OrdinalIgnoreCase)
     {
@@ -59,6 +61,12 @@ public sealed class Variables : KeyedCollection<string, Variable>
                 }));
             }
         }
+    }
+
+    public IReadOnlyDictionary<string, string> GetTemplateVariables()
+    {
+        return _templateVariables ??=
+            this.ToDictionary(v => v.Name.Replace('.', '_'), v => v.Value).AsReadOnly();
     }
 
     protected override string GetKeyForItem(Variable item)
