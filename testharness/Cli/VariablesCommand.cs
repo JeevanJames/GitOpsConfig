@@ -31,7 +31,7 @@ public sealed class VariablesCommand : BaseCommand
             string[] nameParts = variable.Name.Split('.', 2,
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            string value = Resolve ? variable.ResolvedValue : variable.CurrentUnresolvedValue;
+            string value = Resolve ? variable.Value : variable.CurrentUnresolvedValue;
             Markup valueMarkup;
             if (string.IsNullOrWhiteSpace(value))
                 valueMarkup = new Markup("[EMPTY/WHITESPACE]".EscapeMarkup(), new Style(Orange1));

@@ -36,7 +36,7 @@ public sealed class Variables : KeyedCollection<string, Variable>
             hasNestedVariables = false;
             foreach (Variable variable in this)
             {
-                variable.UpdateResolvedValue(nestedVariablePattern.Replace(variable.ResolvedValue, match =>
+                variable.UpdateResolvedValue(nestedVariablePattern.Replace(variable.Value, match =>
                 {
                     string nestedVariableKey = match.Groups["name"].Value;
 
@@ -49,15 +49,13 @@ public sealed class Variables : KeyedCollection<string, Variable>
 
                     // If the nested variable value has its own nested variables, then don't resolve
                     // them now.
-                    if (nestedVariablePattern.IsMatch(nestedVariable.ResolvedValue))
+                    if (nestedVariablePattern.IsMatch(nestedVariable.Value))
                     {
                         hasNestedVariables = true;
-                        nestedVariable.AddUsage(new NestedVariableVariableUsage(
-                            variable.Name, variable.CurrentUnresolvedValue, Array.Empty<string>()));
                         return match.Value;
                     }
 
-                    return nestedVariable.ResolvedValue;
+                    return nestedVariable.Value;
                 }));
             }
         }
@@ -78,7 +76,7 @@ public sealed class Variable
     private readonly List<VariableUsage> _usages = new();
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private string? _resolvedValue;
+    private string? _value;
 
     public Variable(string name)
     {
@@ -87,7 +85,10 @@ public sealed class Variable
 
     public string Name { get; }
 
-    public string ResolvedValue => _resolvedValue ?? string.Empty;
+    /// <summary>
+    ///     Gets the final resolved value for this variable.
+    /// </summary>
+    public string Value => _value ?? string.Empty;
 
     public string CurrentUnresolvedValue => Sources.Count > 0
         ? Sources[^1].Value
@@ -103,14 +104,14 @@ public sealed class Variable
 
     public override string ToString()
     {
-        string value = _resolvedValue ?? CurrentUnresolvedValue;
-        string valueType = _resolvedValue is not null ? "[R]" : "[U]";
+        string value = _value ?? CurrentUnresolvedValue;
+        string valueType = _value is not null ? "[R]" : "[U]";
         return $"{Name} = {valueType} {value} (S{Sources.Count}, U{Usages.Count})";
     }
 
-    internal void InitializeResolvedValue() => _resolvedValue = CurrentUnresolvedValue;
+    internal void InitializeResolvedValue() => _value = CurrentUnresolvedValue;
 
-    internal void UpdateResolvedValue(string resolvedValue) => _resolvedValue = resolvedValue;
+    internal void UpdateResolvedValue(string resolvedValue) => _value = resolvedValue;
 
     internal void AddSource(VariableSource source) => _sources.Add(source);
 

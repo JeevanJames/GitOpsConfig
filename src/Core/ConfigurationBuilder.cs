@@ -51,7 +51,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
             {
                 templateVariables = variables.ToDictionary(
                     variable => variable.Name.Replace('.', '_'),
-                    variable => variable.ResolvedValue);
+                    variable => variable.Value);
             }
 
             // Go through the directory hierarchy and merge the json files.
@@ -157,7 +157,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
                 string? value = jvalue.Value<string>();
                 if (value is not null && Patterns.NestedVariable().IsMatch(value))
                 {
-                    value = Patterns.NestedVariable().Replace(value, match =>
+                    value = Patterns.NestedVariable().Replace(value, (MatchEvaluator)(match =>
                     {
                         string nestedVariableKey = match.Groups["name"].Value;
 
@@ -170,15 +170,15 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
                         // If the nested variable value has its own nested variables, then don't resolve
                         // them now.
-                        if (Patterns.NestedVariable().IsMatch(nestedVariable.ResolvedValue))
+                        if (Patterns.NestedVariable().IsMatch(nestedVariable.Value))
                         {
                             throw new InvalidOperationException(
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
                         nestedVariable.AddUsage(new FileVariableUsage(fileConfig.Name, jvalue.Path));
-                        return nestedVariable.ResolvedValue;
-                    });
+                        return nestedVariable.Value;
+                    }));
 
                     jvalue.Replace(new JValue(value));
                 }
