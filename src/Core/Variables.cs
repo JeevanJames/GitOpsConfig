@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Security.AccessControl;
 using System.Text.RegularExpressions;
 
 namespace GitOpsConfig;
@@ -113,8 +114,8 @@ public sealed class Variable
     public override string ToString()
     {
         string value = _value ?? CurrentUnresolvedValue;
-        string valueType = _value is not null ? "[R]" : "[U]";
-        return $"{Name} = {valueType} {value} (S{Sources.Count}, U{Usages.Count})";
+        char valueType = _value is not null ? 'R' : 'U';
+        return $"{Name} = {value} ({valueType}-S{Sources.Count}:U{Usages.Count})";
     }
 
     internal void InitializeResolvedValue() => _value = CurrentUnresolvedValue;
@@ -136,7 +137,7 @@ public sealed record VariableSource(string[] Sections, string Value)
     public override string ToString() => $"{string.Join('/', Sections)} = {Value}";
 }
 
-public abstract record VariableUsage;
+public abstract record VariableUsage(string[] Sections);
 
 // Variable
 // Name of variable that contains this variable (referencing variable)
@@ -144,7 +145,7 @@ public abstract record VariableUsage;
 public sealed record NestedVariableVariableUsage(
     string ReferencingVariableName,
     string ReferencingVariableExpression,
-    string[] Sections) : VariableUsage
+    string[] Sections) : VariableUsage(Sections)
 {
     public override string ToString() =>
         $"Variable | {string.Join('/', Sections)} | {ReferencingVariableName} = {ReferencingVariableExpression}";
@@ -152,7 +153,8 @@ public sealed record NestedVariableVariableUsage(
 
 public sealed record FileVariableUsage(
     string FileName,
-    string ContentPath) : VariableUsage
+    string ContentPath,
+    string[] Sections) : VariableUsage(Sections)
 {
-    public override string ToString() => $"File | {FileName}: {ContentPath}";
+    public override string ToString() => $"File | {string.Join('/', Sections)} | {FileName}: {ContentPath}";
 }

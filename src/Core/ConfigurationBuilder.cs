@@ -45,7 +45,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
             // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
-                (acc, dir, _) => JsonAggregator(acc, dir, fileConfig, variables), cancellationToken);
+                (acc, dir, sections) => JsonAggregator(acc, dir, sections, fileConfig, variables), cancellationToken);
 
             if (accumulate is null)
                 continue;
@@ -102,7 +102,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
         CancellationToken cancellationToken = default) =>
         GenerateAsync(_ => true, sections, cancellationToken);
 
-    private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir,
+    private static async ValueTask<JObject?> JsonAggregator(JObject? accumulate, string dir, string[] sections,
         AppSettings.FileConfigModel fileConfig,
         Variables variables)
     {
@@ -112,7 +112,10 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
         accumulate ??= new JObject();
 
+        // Read the contents of the file.
         string fileContent = await File.ReadAllTextAsync(jsonFilePath);
+
+        // If the file is configured as a template, resolve the template.
         if (fileConfig.IsTemplate)
         {
             Template template = Template.Parse(fileContent);
@@ -127,7 +130,14 @@ public sealed class ConfigurationBuilder : BaseBuilder
             fileContent = await template.RenderAsync(variables.GetTemplateVariables());
         }
 
+        // Load the original file content or the resolved template content.
+        // If the template resolution results in invalid JSON, then it should fail here with an exception.
         JObject jsonObj = JObject.Parse(fileContent);
+
+        // Update the variable usages for just this file under this section.
+        // Do this before merging, so that the updates are isolated to only the current JSON file.
+        UpdateVariableUsages(jsonObj, variables, fileConfig, sections);
+
         accumulate.Merge(jsonObj, new JsonMergeSettings
         {
             MergeArrayHandling = MergeArrayHandling.Union,
@@ -135,6 +145,50 @@ public sealed class ConfigurationBuilder : BaseBuilder
         });
 
         return accumulate;
+    }
+
+    private static void UpdateVariableUsages(JToken token, Variables variables,
+        AppSettings.FileConfigModel fileConfig, string[] sections)
+    {
+        switch (token)
+        {
+            case JValue jvalue:
+                string? value = jvalue.Value<string>();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    MatchCollection nestedVariableMatches = Patterns.NestedVariable().Matches(value);
+                    foreach (Match match in nestedVariableMatches)
+                    {
+                        string nestedVariableName = match.Groups["name"].Value;
+                        if (!variables.TryGetValue(nestedVariableName, out Variable? nestedVariable))
+                        {
+                            throw new InvalidOperationException($"""
+                                Found a nested variable in JSON file named '{nestedVariableName}'
+                                at location '{jvalue.Path}'.
+                                This variable has not been declared in any of the variable files.
+                                """);
+                        }
+
+                        nestedVariable.AddUsage(new FileVariableUsage(fileConfig.Name, jvalue.Path, sections));
+                    }
+                }
+
+                break;
+
+            case JObject jobject:
+                JProperty[] properties = jobject.Properties().ToArray();
+                for (int i = 0; i < properties.Length; i++)
+                    UpdateVariableUsages(properties[i].Value, variables, fileConfig, sections);
+                break;
+
+            case JArray jarray:
+                for (int i = 0; i < jarray.Count; i++)
+                    UpdateVariableUsages(jarray[i], variables, fileConfig, sections);
+                break;
+
+            default:
+                throw new InvalidOperationException($"Unrecognized token type - {token.GetType()}");
+        }
     }
 
     private static void ResolveJsonValues(JToken token, Variables variables,
@@ -165,7 +219,6 @@ public sealed class ConfigurationBuilder : BaseBuilder
                                 $"Variable {nestedVariableKey} has unresolved nested variables.");
                         }
 
-                        nestedVariable.AddUsage(new FileVariableUsage(fileConfig.Name, jvalue.Path));
                         return nestedVariable.Value;
                     }));
 
