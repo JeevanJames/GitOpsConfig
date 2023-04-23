@@ -53,7 +53,7 @@ public sealed class Variables : KeyedCollection<string, Variable>
                     {
                         hasNestedVariables = true;
                         nestedVariable.AddUsage(new NestedVariableVariableUsage(
-                            variable.Name, variable.CurrentUnresolvedValue));
+                            variable.Name, variable.CurrentUnresolvedValue, Array.Empty<string>()));
                         return match.Value;
                     }
 
@@ -117,7 +117,15 @@ public sealed class Variable
     internal void AddUsage(VariableUsage usage) => _usages.Add(usage);
 }
 
-public sealed record VariableSource(string SourcePath, string Value);
+/// <summary>
+///     The source of a variable.
+/// </summary>
+/// <param name="Sections">The section that this variable was defined in.</param>
+/// <param name="Value">The value of the variable at this section.</param>
+public sealed record VariableSource(string[] Sections, string Value)
+{
+    public override string ToString() => $"{string.Join('/', Sections)} = {Value}";
+}
 
 public abstract record VariableUsage;
 
@@ -126,10 +134,11 @@ public abstract record VariableUsage;
 // The full expression of the referencing variable
 public sealed record NestedVariableVariableUsage(
     string ReferencingVariableName,
-    string ReferencingVariableExpression) : VariableUsage
+    string ReferencingVariableExpression,
+    string[] Sections) : VariableUsage
 {
     public override string ToString() =>
-        $"Variable | {ReferencingVariableName} = {ReferencingVariableExpression}";
+        $"Variable | {string.Join('/', Sections)} | {ReferencingVariableName} = {ReferencingVariableExpression}";
 }
 
 public sealed record FileVariableUsage(

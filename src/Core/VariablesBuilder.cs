@@ -1,4 +1,6 @@
-﻿using IniFile;
+﻿using System.Text.RegularExpressions;
+
+using IniFile;
 
 namespace GitOpsConfig;
 
@@ -38,7 +40,7 @@ public sealed class VariablesBuilder : BaseBuilder
         return variables;
     }
 
-    private static ValueTask<Variables> VariablesAggregator(Variables variables, string dir)
+    private static ValueTask<Variables> VariablesAggregator(Variables variables, string dir, string[] sections)
     {
         string variablesFilePath = Path.Combine(dir, "variables.ini");
         if (!File.Exists(variablesFilePath))
@@ -51,13 +53,36 @@ public sealed class VariablesBuilder : BaseBuilder
             {
                 string variableName = $"{section.Name}.{property.Name}";
 
+                // Try to get the variable. If it does not exist, create it and add it to the variables
+                // collection.
                 if (!variables.TryGetValue(variableName, out Variable? variable))
                 {
                     variable = new Variable(variableName);
                     variables.Add(variable);
                 }
 
-                variable.AddSource(new VariableSource(dir, property.Value));
+                // Add the current details as the initial variable source.
+                variable.AddSource(new VariableSource(sections, property.Value));
+
+                // Parse the variable value for nested variables.
+                // If there are nested variables, create variables for them (if not already created)
+                // and add this variable to their usages.
+                MatchCollection nestedVariableMatches = Patterns.NestedVariable().Matches(property.Value);
+                foreach (Match match in nestedVariableMatches)
+                {
+                    string nestedVariableName = match.Groups["name"].Value;
+
+                    if (!variables.TryGetValue(nestedVariableName, out Variable? nestedVariable))
+                    {
+                        nestedVariable = new Variable(nestedVariableName);
+                        variables.Add(nestedVariable);
+
+                        //TODO: Since the nested variable is not created, but has been referenced,
+                        //should we create a special source type for this situation? E.g. CreatedByReference
+                    }
+
+                    nestedVariable.AddUsage(new NestedVariableVariableUsage(variableName, property.Value, sections));
+                }
             }
         }
 

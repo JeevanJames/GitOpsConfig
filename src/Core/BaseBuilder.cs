@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-using GitOpsConfig.Config;
+﻿using GitOpsConfig.Config;
 
 using Newtonsoft.Json;
 
@@ -32,37 +30,44 @@ public abstract class BaseBuilder
     protected async ValueTask<TAccumulate> AggregateAsync<TAccumulate>(string appDir,
         IEnumerable<string> sections,
         TAccumulate seed,
-        Func<TAccumulate, string, ValueTask<TAccumulate>> aggregatorFunc,
+        Func<TAccumulate, string, string[], ValueTask<TAccumulate>> aggregatorFunc,
         CancellationToken cancellationToken)
     {
         TAccumulate accumulate = seed;
 
-        string dir = SharedDir;
         cancellationToken.ThrowIfCancellationRequested();
-        accumulate = await aggregatorFunc(accumulate, dir);
+
+        string dir = SharedDir;
+        List<string> currentSections = new(new[] { "shared" });
+        accumulate = await aggregatorFunc(accumulate, dir, currentSections.ToArray());
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
 
-            cancellationToken.ThrowIfCancellationRequested();
-            accumulate = await aggregatorFunc(accumulate, dir);
+            currentSections.Add(section);
+
+            accumulate = await aggregatorFunc(accumulate, dir, currentSections.ToArray());
         }
 
         //TODO: If we hit the last section, then ensure that there are no further subdirectories
 
-        dir = appDir;
         cancellationToken.ThrowIfCancellationRequested();
-        accumulate = await aggregatorFunc(accumulate, dir);
+
+        dir = appDir;
+        currentSections.Clear();
+        currentSections.Add(Path.GetFileName(appDir));
+        accumulate = await aggregatorFunc(accumulate, dir, currentSections.ToArray());
         foreach (string section in sections)
         {
             dir = Path.Combine(dir, section);
             if (!Directory.Exists(dir))
                 break;
 
-            cancellationToken.ThrowIfCancellationRequested();
-            accumulate = await aggregatorFunc(accumulate, dir);
+            currentSections.Add(section);
+
+            accumulate = await aggregatorFunc(accumulate, dir, currentSections.ToArray());
         }
 
         //TODO: If we hit the last section, then ensure that there are no further subdirectories
@@ -88,11 +93,4 @@ public abstract class BaseBuilder
 
         return settings;
     }
-}
-
-internal static partial class Patterns
-{
-    [GeneratedRegex(@"\$\((?<name>\w+(\.\w+)+)\)",
-        RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking | RegexOptions.Compiled, 1000)]
-    internal static partial Regex NestedVariable();
 }
