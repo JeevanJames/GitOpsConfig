@@ -18,48 +18,6 @@
             </code>
             </remarks>
         </member>
-        <member name="T:GitOpsConfig.VariableUsage">
-            <summary>
-                Represents an usage of a variable. This could be a usage from a configuration file or from
-                within another variable, as a nested variable.
-            </summary>
-            <param name="Name">
-                The name of the configuration file or another variable, which uses the variable.
-            </param>
-            <param name="ContentPath">
-                The path within the configuration file or the name of the variable that contains this variable
-                as a nested variable.
-            </param>
-            <param name="Type">The type of variable usage - configuration file or nested variable.</param>
-        </member>
-        <member name="M:GitOpsConfig.VariableUsage.#ctor(System.String,System.String,GitOpsConfig.VariableUsageType)">
-            <summary>
-                Represents an usage of a variable. This could be a usage from a configuration file or from
-                within another variable, as a nested variable.
-            </summary>
-            <param name="Name">
-                The name of the configuration file or another variable, which uses the variable.
-            </param>
-            <param name="ContentPath">
-                The path within the configuration file or the name of the variable that contains this variable
-                as a nested variable.
-            </param>
-            <param name="Type">The type of variable usage - configuration file or nested variable.</param>
-        </member>
-        <member name="P:GitOpsConfig.VariableUsage.Name">
-            <summary>
-                The name of the configuration file or another variable, which uses the variable.
-            </summary>
-        </member>
-        <member name="P:GitOpsConfig.VariableUsage.ContentPath">
-            <summary>
-                The path within the configuration file or the name of the variable that contains this variable
-                as a nested variable.
-            </summary>
-        </member>
-        <member name="P:GitOpsConfig.VariableUsage.Type">
-            <summary>The type of variable usage - configuration file or nested variable.</summary>
-        </member>
         <member name="T:System.Text.RegularExpressions.Generated.NestedVariable_0">
             <summary>Caches a <see cref="T:System.Text.RegularExpressions.Regex"/> instance for the NestedVariable method.</summary>
             <remarks>A custom Regex-derived type could not be generated because RegexOptions.NonBacktracking isn't supported.</remarks>

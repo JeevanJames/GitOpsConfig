@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-using IniFile;
+﻿using IniFile;
 
 namespace GitOpsConfig;
 

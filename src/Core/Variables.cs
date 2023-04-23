@@ -52,8 +52,8 @@ public sealed class Variables : KeyedCollection<string, Variable>
                     if (nestedVariablePattern.IsMatch(nestedVariable.ResolvedValue))
                     {
                         hasNestedVariables = true;
-                        nestedVariable.AddUsage(new VariableUsage(
-                            variable.Name, variable.CurrentUnresolvedValue, VariableUsageType.Variable));
+                        nestedVariable.AddUsage(new NestedVariableVariableUsage(
+                            variable.Name, variable.CurrentUnresolvedValue));
                         return match.Value;
                     }
 
@@ -90,7 +90,7 @@ public sealed class Variable
     public string ResolvedValue => _resolvedValue ?? string.Empty;
 
     public string CurrentUnresolvedValue => Sources.Count > 0
-        ? Sources[^1].UnresolvedValue
+        ? Sources[^1].Value
         : throw new InvalidOperationException($"No sources have been added to variable {Name}.");
 
     [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
@@ -117,24 +117,24 @@ public sealed class Variable
     internal void AddUsage(VariableUsage usage) => _usages.Add(usage);
 }
 
-public sealed record VariableSource(string SourcePath, string UnresolvedValue);
+public sealed record VariableSource(string SourcePath, string Value);
 
-/// <summary>
-///     Represents an usage of a variable. This could be a usage from a configuration file or from
-///     within another variable, as a nested variable.
-/// </summary>
-/// <param name="Name">
-///     The name of the configuration file or another variable, which uses the variable.
-/// </param>
-/// <param name="ContentPath">
-///     The path within the configuration file or the name of the variable that contains this variable
-///     as a nested variable.
-/// </param>
-/// <param name="Type">The type of variable usage - configuration file or nested variable.</param>
-public sealed record VariableUsage(string Name, string ContentPath, VariableUsageType Type);
+public abstract record VariableUsage;
 
-public enum VariableUsageType
+// Variable
+// Name of variable that contains this variable (referencing variable)
+// The full expression of the referencing variable
+public sealed record NestedVariableVariableUsage(
+    string ReferencingVariableName,
+    string ReferencingVariableExpression) : VariableUsage
 {
-    Variable,
-    File,
+    public override string ToString() =>
+        $"Variable | {ReferencingVariableName} = {ReferencingVariableExpression}";
+}
+
+public sealed record FileVariableUsage(
+    string FileName,
+    string ContentPath) : VariableUsage
+{
+    public override string ToString() => $"File | {FileName}: {ContentPath}";
 }
