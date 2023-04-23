@@ -1,7 +1,6 @@
 ﻿using Aargh;
 
 using Spectre.Console;
-using Spectre.Console.Json;
 
 namespace GitOpsConfig.TestHarness.Cli;
 

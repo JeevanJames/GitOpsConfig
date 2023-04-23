@@ -13,7 +13,6 @@
       <PackageReference Include="Aargh" Version="0.1.6" />
       <PackageReference Include="Aargh.Extensions.SpectreConsole" Version="0.1.6" />
       <PackageReference Include="JsonDiffPatch.Net" Version="2.3.0" />
-      <PackageReference Include="Spectre.Console.Json" Version="0.46.0" />
     </ItemGroup>
 
     <ItemGroup>
