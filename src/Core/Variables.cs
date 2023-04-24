@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
+using GitOpsConfig.Internals;
+
 namespace GitOpsConfig;
 
 public sealed class Variables : KeyedCollection<string, Variable>

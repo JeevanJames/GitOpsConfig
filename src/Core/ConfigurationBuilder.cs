@@ -47,7 +47,7 @@ public sealed class ConfigurationBuilder : BaseBuilder
 
             // Go through the directory hierarchy and merge the json files.
             JObject? accumulate = await AggregateAsync<JObject?>(appDir, sections, null,
-                (acc, dir, sections) => JsonAggregator(acc, dir, sections, fileConfig, variables), cancellationToken);
+                (acc, dir, s) => JsonAggregator(acc, dir, s, fileConfig, variables), cancellationToken);
 
             if (accumulate is null)
                 continue;
