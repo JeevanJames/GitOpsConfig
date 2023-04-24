@@ -15,5 +15,9 @@
         <PackageReference Include="System.Linq.Async" Version="6.0.1" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Bases\" />
+    </ItemGroup>
+
 
 </Project>

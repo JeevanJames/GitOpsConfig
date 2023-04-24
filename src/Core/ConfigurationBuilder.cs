@@ -2,7 +2,9 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
+using GitOpsConfig.Bases;
 using GitOpsConfig.Config;
+using GitOpsConfig.Internals;
 
 using Newtonsoft.Json.Linq;
 

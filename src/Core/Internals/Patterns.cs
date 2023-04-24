@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 
-namespace GitOpsConfig;
+namespace GitOpsConfig.Internals;
 
 internal static partial class Patterns
 {

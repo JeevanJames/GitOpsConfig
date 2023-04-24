@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Security.AccessControl;
 using System.Text.RegularExpressions;
 
 namespace GitOpsConfig;

@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace GitOpsConfig;
+namespace GitOpsConfig.Bases;
 
 public abstract class BaseBuilder
 {

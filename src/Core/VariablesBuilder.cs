@@ -1,5 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 
+using GitOpsConfig.Bases;
+using GitOpsConfig.Internals;
+
 using IniFile;
 
 namespace GitOpsConfig;
