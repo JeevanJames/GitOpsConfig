@@ -1,8 +1,4 @@
-﻿using Aargh;
-
-using Spectre.Console;
-
-namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("variables", "v",
     HelpText = "Displays all variables for a specified app and sections.")]

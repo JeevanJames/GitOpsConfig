@@ -1,9 +1,6 @@
-using Aargh;
 using Aargh.Extensions.SpectreConsole;
 
 using GitOpsConfig.TestHarness.Cli;
-
-using static Spectre.Console.Color;
 
 DebugOutput.UseWriter(SpectreDebugOutputWriter.Default());
 Runner runner = new(() => new Cli()

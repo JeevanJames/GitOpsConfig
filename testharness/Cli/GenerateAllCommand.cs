@@ -1,8 +1,4 @@
-﻿using Aargh;
-
-using Spectre.Console;
-
-namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("generate-all", "ga",
     HelpText = "Generates all the configurations for all apps in the specified root directory.")]

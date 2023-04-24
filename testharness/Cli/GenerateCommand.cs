@@ -1,6 +1,4 @@
-﻿using Aargh;
-
-namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("generate", "g",
     HelpText = "Generates the configurations for the specified apps.")]

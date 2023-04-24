@@ -1,6 +1,4 @@
-﻿using Aargh;
-
-namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("validate",
     HelpText = "Performs various validations on variables.")]

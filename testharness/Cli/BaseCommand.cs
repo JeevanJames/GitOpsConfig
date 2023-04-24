@@ -1,9 +1,4 @@
-﻿using Aargh;
-using Aargh.Transformers;
-
-using Spectre.Console;
-
-namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli;
 
 public abstract class BaseCommand : Command
 {
