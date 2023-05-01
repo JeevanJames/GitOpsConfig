@@ -128,17 +128,21 @@ public sealed class Variable
     internal void AddUsage(VariableUsage usage) => _usages.Add(usage);
 }
 
+public abstract record VariableTracking(string[] Sections)
+{
+    public string SectionString(string separator = "/") => string.Join(separator, Sections);
+
+    public override string ToString() => SectionString();
+}
+
 /// <summary>
 ///     The source of a variable.
 /// </summary>
 /// <param name="Sections">The section that this variable was defined in.</param>
 /// <param name="Value">The value of the variable at this section.</param>
-public sealed record VariableSource(string[] Sections, string Value)
-{
-    public override string ToString() => $"{string.Join('/', Sections)} = {Value}";
-}
+public sealed record VariableSource(string[] Sections, string Value) : VariableTracking(Sections);
 
-public abstract record VariableUsage(string[] Sections);
+public abstract record VariableUsage(string[] Sections) : VariableTracking(Sections);
 
 // Variable
 // Name of variable that contains this variable (referencing variable)
@@ -149,7 +153,7 @@ public sealed record NestedVariableVariableUsage(
     string[] Sections) : VariableUsage(Sections)
 {
     public override string ToString() =>
-        $"Variable | {string.Join('/', Sections)} | {ReferencingVariableName} = {ReferencingVariableExpression}";
+        $"Variable | {SectionString()} | {ReferencingVariableName} = {ReferencingVariableExpression}";
 }
 
 public sealed record FileVariableUsage(
@@ -157,5 +161,5 @@ public sealed record FileVariableUsage(
     string ContentPath,
     string[] Sections) : VariableUsage(Sections)
 {
-    public override string ToString() => $"File | {string.Join('/', Sections)} | {FileName}: {ContentPath}";
+    public override string ToString() => $"File | {SectionString()} | {FileName}: {ContentPath}";
 }

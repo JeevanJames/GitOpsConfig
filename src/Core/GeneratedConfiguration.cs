@@ -36,9 +36,10 @@ public sealed class GeneratedConfiguration : IEquatable<GeneratedConfiguration>
     public static bool operator !=(GeneratedConfiguration? left, GeneratedConfiguration? right) =>
         !Equals(left, right);
 
-    public void Deconstruct(out string fileName, out string content)
+    public void Deconstruct(out string fileName, out string content, out Variables variables)
     {
         fileName = FileName;
         content = Content;
+        variables = Variables;
     }
 }

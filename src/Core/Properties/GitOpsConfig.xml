@@ -37,9 +37,6 @@
             <param name="Sections">The section that this variable was defined in.</param>
             <param name="Value">The value of the variable at this section.</param>
         </member>
-        <member name="P:GitOpsConfig.VariableSource.Sections">
-            <summary>The section that this variable was defined in.</summary>
-        </member>
         <member name="P:GitOpsConfig.VariableSource.Value">
             <summary>The value of the variable at this section.</summary>
         </member>
