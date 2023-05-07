@@ -1,4 +1,4 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿namespace GitOpsConfig.TestHarness.Cli.Bases;
 
 public abstract class BaseCommand : Command
 {

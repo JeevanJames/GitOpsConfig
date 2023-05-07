@@ -1,4 +1,6 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿using GitOpsConfig.TestHarness.Cli.Bases;
+
+namespace GitOpsConfig.TestHarness.Cli;
 
 [Command<VariablesCommand>("list", "l",
     HelpText = "Displays all variables for a specified app and sections.")]
@@ -31,7 +33,7 @@ public sealed class VariablesListCommand : BaseCommand
             Markup valueMarkup;
             if (string.IsNullOrWhiteSpace(value))
                 valueMarkup = new Markup("[EMPTY/WHITESPACE]".EscapeMarkup(), new Style(Orange1));
-            else if (value == "_UNDEFINED_")
+            else if (value.IsSpecialValueUndefined())
                 valueMarkup = new Markup("UNDEFINED", new Style(Red1));
             else
                 valueMarkup = new Markup(value.EscapeMarkup(), new Style(Green1));

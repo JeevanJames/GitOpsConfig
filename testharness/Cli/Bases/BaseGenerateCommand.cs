@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json.Linq;
 
-namespace GitOpsConfig.TestHarness.Cli;
+namespace GitOpsConfig.TestHarness.Cli.Bases;
 
 public abstract class BaseGenerateCommand : BaseCommand
 {

@@ -1,4 +1,6 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿using GitOpsConfig.TestHarness.Cli.Bases;
+
+namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("generate-all", "ga",
     HelpText = "Generates all the configurations for all apps in the specified root directory.")]

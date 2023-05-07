@@ -4,6 +4,12 @@ using Newtonsoft.Json;
 
 namespace GitOpsConfig.Bases;
 
+/// <summary>
+///     Base class for building something from the config repository directory structure.
+///     <br/>
+///     Deriving classes can use the <see cref="AggregateAsync{TAccumulate}"/> method to build the
+///     final value by iterating over the config repository directories in the correct sequence.
+/// </summary>
 public abstract class BaseBuilder
 {
     protected BaseBuilder(string? rootDir)
@@ -21,12 +27,33 @@ public abstract class BaseBuilder
             throw new DirectoryNotFoundException($"Shared directory {SharedDir} not found.");
     }
 
+    /// <summary>
+    ///     Gets the root directory of the config repository.
+    /// </summary>
     public string RootDir { get; }
 
+    /// <summary>
+    ///     Gets the shared directory of the config repository.
+    /// </summary>
     public string SharedDir { get; }
 
+    /// <summary>
+    ///     Gets the root apps directory of the config repository.
+    /// </summary>
     public string AppsDir { get; }
 
+    /// <summary>
+    ///     Given a seed value, iterates over the config repository directories in the correct sequence
+    ///     (shared subdirectory first and then the specific app subdirectory under apps) and aggregates
+    ///     a final value.
+    /// </summary>
+    /// <typeparam name="TAccumulate">The type of value to aggregate.</typeparam>
+    /// <param name="appDir">The specific app sub-directory.</param>
+    /// <param name="sections">The classification sections to iterate over.</param>
+    /// <param name="seed">The initial seed value to build the aggregate from.</param>
+    /// <param name="aggregatorFunc">Delegate called on every directory iterated, to aggregate the value.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to cancel the operation.</param>
+    /// <returns>The final aggregated value.</returns>
     protected async ValueTask<TAccumulate> AggregateAsync<TAccumulate>(string appDir,
         IEnumerable<string> sections,
         TAccumulate seed,

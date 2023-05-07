@@ -1,4 +1,6 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿using GitOpsConfig.TestHarness.Cli.Bases;
+
+namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("validate",
     HelpText = "Performs various validations on variables.")]

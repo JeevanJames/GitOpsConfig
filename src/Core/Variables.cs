@@ -110,7 +110,7 @@ public sealed class Variable
     [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
     public IReadOnlyList<VariableUsage> Usages => _usages;
 
-    public bool IsUndefined => string.Equals(CurrentUnresolvedValue, "_UNDEFINED_", StringComparison.Ordinal);
+    public bool IsUndefined => CurrentUnresolvedValue.IsSpecialValueUndefined();
 
     public override string ToString()
     {
@@ -128,6 +128,10 @@ public sealed class Variable
     internal void AddUsage(VariableUsage usage) => _usages.Add(usage);
 }
 
+/// <summary>
+///     Tracks information about a variable, such as its source or usage.
+/// </summary>
+/// <param name="Sections">The classification section that applies to this variable information.</param>
 public abstract record VariableTracking(string[] Sections)
 {
     public string SectionString(string separator = "/") => string.Join(separator, Sections);
@@ -138,7 +142,7 @@ public abstract record VariableTracking(string[] Sections)
 /// <summary>
 ///     The source of a variable.
 /// </summary>
-/// <param name="Sections">The section that this variable was defined in.</param>
+/// <param name="Sections">The classification section that this variable was defined in.</param>
 /// <param name="Value">The value of the variable at this section.</param>
 public sealed record VariableSource(string[] Sections, string Value) : VariableTracking(Sections);
 
@@ -156,6 +160,12 @@ public sealed record NestedVariableVariableUsage(
         $"Variable | {SectionString()} | {ReferencingVariableName} = {ReferencingVariableExpression}";
 }
 
+/// <summary>
+///     Usage of a variable in a config file.
+/// </summary>
+/// <param name="FileName">The config file name, just the name, no directory details.</param>
+/// <param name="ContentPath">The path in the config file that points to the location that uses the variable.</param>
+/// <param name="Sections">The classification section where this config file is located.</param>
 public sealed record FileVariableUsage(
     string FileName,
     string ContentPath,

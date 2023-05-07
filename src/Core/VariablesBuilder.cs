@@ -9,6 +9,8 @@ namespace GitOpsConfig;
 
 public sealed class VariablesBuilder : BaseBuilder
 {
+    public const string VariablesFileName = "variables.ini";
+
     public VariablesBuilder(string? rootDir)
         : base(rootDir)
     {
@@ -45,7 +47,7 @@ public sealed class VariablesBuilder : BaseBuilder
 
     private static ValueTask<Variables> VariablesAggregator(Variables variables, string dir, string[] sections)
     {
-        string variablesFilePath = Path.Combine(dir, "variables.ini");
+        string variablesFilePath = Path.Combine(dir, VariablesFileName);
         if (!File.Exists(variablesFilePath))
             return ValueTask.FromResult(variables);
 
@@ -77,10 +79,12 @@ public sealed class VariablesBuilder : BaseBuilder
 
                     if (!variables.TryGetValue(nestedVariableName, out Variable? nestedVariable))
                     {
+                        // If the nested variable does not exist, create it and add it to the variables
+                        // collection.
                         nestedVariable = new Variable(nestedVariableName);
                         variables.Add(nestedVariable);
 
-                        //TODO: Since the nested variable is not created, but has been referenced,
+                        //TODO: Since the nested variable is not yet created, but has been referenced,
                         //should we create a special source type for this situation? E.g. CreatedByReference
                     }
 

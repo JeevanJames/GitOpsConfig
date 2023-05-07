@@ -1,4 +1,6 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿using GitOpsConfig.TestHarness.Cli.Bases;
+
+namespace GitOpsConfig.TestHarness.Cli;
 
 [Command("generate", "g",
     HelpText = "Generates the configurations for the specified apps.")]

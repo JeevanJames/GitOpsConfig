@@ -4,6 +4,43 @@
         <name>GitOpsConfig</name>
     </assembly>
     <members>
+        <member name="T:GitOpsConfig.Bases.BaseBuilder">
+            <summary>
+                Base class for building something from the config repository directory structure.
+                <br/>
+                Deriving classes can use the <see cref="M:GitOpsConfig.Bases.BaseBuilder.AggregateAsync``1(System.String,System.Collections.Generic.IEnumerable{System.String},``0,System.Func{``0,System.String,System.String[],System.Threading.Tasks.ValueTask{``0}},System.Threading.CancellationToken)"/> method to build the
+                final value by iterating over the config repository directories in the correct sequence.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Bases.BaseBuilder.RootDir">
+            <summary>
+                Gets the root directory of the config repository.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Bases.BaseBuilder.SharedDir">
+            <summary>
+                Gets the shared directory of the config repository.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Bases.BaseBuilder.AppsDir">
+            <summary>
+                Gets the root apps directory of the config repository.
+            </summary>
+        </member>
+        <member name="M:GitOpsConfig.Bases.BaseBuilder.AggregateAsync``1(System.String,System.Collections.Generic.IEnumerable{System.String},``0,System.Func{``0,System.String,System.String[],System.Threading.Tasks.ValueTask{``0}},System.Threading.CancellationToken)">
+            <summary>
+                Given a seed value, iterates over the config repository directories in the correct sequence
+                (shared subdirectory first and then the specific app subdirectory under apps) and aggregates
+                a final value.
+            </summary>
+            <typeparam name="TAccumulate">The type of value to aggregate.</typeparam>
+            <param name="appDir">The specific app sub-directory.</param>
+            <param name="sections">The classification sections to iterate over.</param>
+            <param name="seed">The initial seed value to build the aggregate from.</param>
+            <param name="aggregatorFunc">Delegate called on every directory iterated, to aggregate the value.</param>
+            <param name="cancellationToken">A <see cref="T:System.Threading.CancellationToken"/> to cancel the operation.</param>
+            <returns>The final aggregated value.</returns>
+        </member>
         <member name="M:GitOpsConfig.Internals.Patterns.NestedVariable">
             <remarks>
             Pattern explanation:<br/>
@@ -23,22 +60,59 @@
                 Gets the final resolved value for this variable.
             </summary>
         </member>
+        <member name="T:GitOpsConfig.VariableTracking">
+            <summary>
+                Tracks information about a variable, such as its source or usage.
+            </summary>
+            <param name="Sections">The classification section that applies to this variable information.</param>
+        </member>
+        <member name="M:GitOpsConfig.VariableTracking.#ctor(System.String[])">
+            <summary>
+                Tracks information about a variable, such as its source or usage.
+            </summary>
+            <param name="Sections">The classification section that applies to this variable information.</param>
+        </member>
+        <member name="P:GitOpsConfig.VariableTracking.Sections">
+            <summary>The classification section that applies to this variable information.</summary>
+        </member>
         <member name="T:GitOpsConfig.VariableSource">
             <summary>
                 The source of a variable.
             </summary>
-            <param name="Sections">The section that this variable was defined in.</param>
+            <param name="Sections">The classification section that this variable was defined in.</param>
             <param name="Value">The value of the variable at this section.</param>
         </member>
         <member name="M:GitOpsConfig.VariableSource.#ctor(System.String[],System.String)">
             <summary>
                 The source of a variable.
             </summary>
-            <param name="Sections">The section that this variable was defined in.</param>
+            <param name="Sections">The classification section that this variable was defined in.</param>
             <param name="Value">The value of the variable at this section.</param>
         </member>
         <member name="P:GitOpsConfig.VariableSource.Value">
             <summary>The value of the variable at this section.</summary>
+        </member>
+        <member name="T:GitOpsConfig.FileVariableUsage">
+            <summary>
+                Usage of a variable in a config file.
+            </summary>
+            <param name="FileName">The config file name, just the name, no directory details.</param>
+            <param name="ContentPath">The path in the config file that points to the location that uses the variable.</param>
+            <param name="Sections">The classification section where this config file is located.</param>
+        </member>
+        <member name="M:GitOpsConfig.FileVariableUsage.#ctor(System.String,System.String,System.String[])">
+            <summary>
+                Usage of a variable in a config file.
+            </summary>
+            <param name="FileName">The config file name, just the name, no directory details.</param>
+            <param name="ContentPath">The path in the config file that points to the location that uses the variable.</param>
+            <param name="Sections">The classification section where this config file is located.</param>
+        </member>
+        <member name="P:GitOpsConfig.FileVariableUsage.FileName">
+            <summary>The config file name, just the name, no directory details.</summary>
+        </member>
+        <member name="P:GitOpsConfig.FileVariableUsage.ContentPath">
+            <summary>The path in the config file that points to the location that uses the variable.</summary>
         </member>
         <member name="T:System.Text.RegularExpressions.Generated.NestedVariable_0">
             <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the NestedVariable method.</summary>

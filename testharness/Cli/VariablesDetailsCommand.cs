@@ -1,4 +1,6 @@
-﻿namespace GitOpsConfig.TestHarness.Cli;
+﻿using GitOpsConfig.TestHarness.Cli.Bases;
+
+namespace GitOpsConfig.TestHarness.Cli;
 
 [Command<VariablesCommand>("details", "d",
     HelpText = "Displays details of a specific variable.")]
