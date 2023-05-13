@@ -63,15 +63,21 @@ public abstract class BaseGenerateCommand : BaseCommand
         string filePath = Path.Combine(OutputDir, fileName);
         await File.WriteAllTextAsync(filePath, config.Content);
 
-        string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
-        string comparisonFile = Path.Combine(ComparisonDir, fileName);
-        await File.WriteAllTextAsync(comparisonFile, comparison ?? string.Empty);
+        string referenceFilePath = Path.Combine(ReferenceDir, fileName);
+        if (!File.Exists(referenceFilePath))
+        {
+            MarkupLineInterpolated($"[{Orange1}]No reference file found.[/]");
+            return;
+        }
 
-        if (comparison is null)
-            MarkupLine($"[{Orange1}]No reference file found[/]");
-        else if (string.IsNullOrWhiteSpace(comparison))
-            MarkupLine($"[{Green1}]No differences[/]");
+        string? comparison = CompareConfigs(OutputDir, ReferenceDir, fileName);
+        if (string.IsNullOrWhiteSpace(comparison))
+            MarkupLineInterpolated($"[{Green1}]No differences.[/]");
         else
+        {
+            string comparisonFile = Path.Combine(ComparisonDir, fileName);
+            await File.WriteAllTextAsync(comparisonFile, comparison);
             MarkupLine($"[{Red1}]Differences found[/]");
+        }
     }
 }
