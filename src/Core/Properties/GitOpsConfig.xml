@@ -55,9 +55,37 @@
             </code>
             </remarks>
         </member>
+        <member name="P:GitOpsConfig.Variable.Name">
+            <summary>
+                Gets the name of the variable.
+            </summary>
+        </member>
         <member name="P:GitOpsConfig.Variable.Value">
             <summary>
                 Gets the final resolved value for this variable.
+                <br/>
+                This value is applicable only after all variable files have been resolved.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Variable.CurrentUnresolvedValue">
+            <summary>
+                Gets the current (unresolved) value of the variable during variable file processing.
+                <br/>
+                After the files have been processed, this value will be the one from the last-read file.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Variable.Sources">
+            <summary>
+                Gets the list of sources for this variable, i.e. the variable files where this variable
+                is specified.
+            </summary>
+        </member>
+        <member name="P:GitOpsConfig.Variable.Usages">
+            <summary>
+                Gets the list of usages of this variable, which includes:
+                <br/>
+                o The variable values in which this variable is mentioned as a nested variable.
+                o The config files where this variable is used.
             </summary>
         </member>
         <member name="T:GitOpsConfig.VariableTracking">
@@ -91,6 +119,34 @@
         </member>
         <member name="P:GitOpsConfig.VariableSource.Value">
             <summary>The value of the variable at this section.</summary>
+        </member>
+        <member name="T:GitOpsConfig.NestedVariableVariableUsage">
+            <summary>
+                Usage of a variable as a nested variable within another variable's value.
+            </summary>
+            <param name="ReferencingVariableName">The name of the referencing variable.</param>
+            <param name="ReferencingVariableExpression">
+                The unresolved value of the referencing variable at the time of parsing.
+            </param>
+            <param name="Sections">The classification sections where this variables file is located.</param>
+        </member>
+        <member name="M:GitOpsConfig.NestedVariableVariableUsage.#ctor(System.String,System.String,System.String[])">
+            <summary>
+                Usage of a variable as a nested variable within another variable's value.
+            </summary>
+            <param name="ReferencingVariableName">The name of the referencing variable.</param>
+            <param name="ReferencingVariableExpression">
+                The unresolved value of the referencing variable at the time of parsing.
+            </param>
+            <param name="Sections">The classification sections where this variables file is located.</param>
+        </member>
+        <member name="P:GitOpsConfig.NestedVariableVariableUsage.ReferencingVariableName">
+            <summary>The name of the referencing variable.</summary>
+        </member>
+        <member name="P:GitOpsConfig.NestedVariableVariableUsage.ReferencingVariableExpression">
+            <summary>
+                The unresolved value of the referencing variable at the time of parsing.
+            </summary>
         </member>
         <member name="T:GitOpsConfig.FileVariableUsage">
             <summary>

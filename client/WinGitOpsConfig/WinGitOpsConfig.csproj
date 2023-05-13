@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net7.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+
+        <RootNamespace>$(BaseNamespace).Client.WinGitOpsConfig</RootNamespace>
+        <DocumentationFile>Properties\$(AssemblyName).xml</DocumentationFile>
+
+        <!-- Language options -->
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="IniFile.NET" Version="1.6.0" />
+      <PackageReference Include="Scintilla.NET" Version="5.3.2.7" />
+    </ItemGroup>
+
+</Project>

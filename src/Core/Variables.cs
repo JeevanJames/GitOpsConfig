@@ -93,20 +93,40 @@ public sealed class Variable
         Name = name;
     }
 
+    /// <summary>
+    ///     Gets the name of the variable.
+    /// </summary>
     public string Name { get; }
 
     /// <summary>
     ///     Gets the final resolved value for this variable.
+    ///     <br/>
+    ///     This value is applicable only after all variable files have been resolved.
     /// </summary>
     public string Value => _value ?? string.Empty;
 
+    /// <summary>
+    ///     Gets the current (unresolved) value of the variable during variable file processing.
+    ///     <br/>
+    ///     After the files have been processed, this value will be the one from the last-read file.
+    /// </summary>
     public string CurrentUnresolvedValue => Sources.Count > 0
         ? Sources[^1].Value
         : throw new InvalidOperationException($"No sources have been added to variable {Name}.");
 
+    /// <summary>
+    ///     Gets the list of sources for this variable, i.e. the variable files where this variable
+    ///     is specified.
+    /// </summary>
     [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
     public IReadOnlyList<VariableSource> Sources => _sources;
 
+    /// <summary>
+    ///     Gets the list of usages of this variable, which includes:
+    ///     <br/>
+    ///     o The variable values in which this variable is mentioned as a nested variable.
+    ///     o The config files where this variable is used.
+    /// </summary>
     [DebuggerBrowsable(DebuggerBrowsableState.RootHidden)]
     public IReadOnlyList<VariableUsage> Usages => _usages;
 
@@ -148,9 +168,14 @@ public sealed record VariableSource(string[] Sections, string Value) : VariableT
 
 public abstract record VariableUsage(string[] Sections) : VariableTracking(Sections);
 
-// Variable
-// Name of variable that contains this variable (referencing variable)
-// The full expression of the referencing variable
+/// <summary>
+///     Usage of a variable as a nested variable within another variable's value.
+/// </summary>
+/// <param name="ReferencingVariableName">The name of the referencing variable.</param>
+/// <param name="ReferencingVariableExpression">
+///     The unresolved value of the referencing variable at the time of parsing.
+/// </param>
+/// <param name="Sections">The classification sections where this variables file is located.</param>
 public sealed record NestedVariableVariableUsage(
     string ReferencingVariableName,
     string ReferencingVariableExpression,

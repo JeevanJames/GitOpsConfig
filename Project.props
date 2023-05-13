@@ -4,7 +4,7 @@
         <BaseNamespace>GitOpsConfig</BaseNamespace>
         <Product>GitOps Config</Product>
         <RepositoryName>GitOpsConfig</RepositoryName>
-        <CopyrightYears>2022</CopyrightYears>
+        <CopyrightYears>2022-23</CopyrightYears>
     </PropertyGroup>
 
 </Project>
