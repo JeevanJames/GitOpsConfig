@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 using IniFile;
 
 using ScintillaNET;
@@ -18,12 +20,10 @@ public partial class MainForm : Form
         if (dlgBrowseFolder.ShowDialog(this) != DialogResult.OK)
             return;
 
-        Populate(treeFolders, dlgBrowseFolder.SelectedPath);
-    }
+        string rootDir = dlgBrowseFolder.SelectedPath;
 
-    private static void Populate(TreeView tree, string rootDir)
-    {
         string appsDir = Path.Combine(rootDir, "apps");
+
         if (!Directory.Exists(appsDir))
         {
             MessageBox.Show(
@@ -39,24 +39,28 @@ public partial class MainForm : Form
                 "No apps found", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
-        tree.Nodes.Clear();
+        statusConfigDir.Text = rootDir;
 
-        foreach (string appDir in appDirs)
-        {
-            string appName = Path.GetFileName(appDir);
-            TreeNode appNode = tree.Nodes.Add(appDir, appName);
-            PopulateAppNode(appNode, appDir);
-        }
+        treeAppFolders.Nodes.Clear();
+        PopulateNodes(treeAppFolders, appsDir, CreateNode);
+
+        treeSharedFolders.Nodes.Clear();
+        string sharedDir = Path.Combine(rootDir, "shared");
+        if (Directory.Exists(sharedDir))
+            PopulateNodes(treeSharedFolders, sharedDir, CreateNode);
+
+        static TreeNode CreateNode(TreeView tree, string name, string text) => tree.Nodes.Add(name, text);
     }
 
-    private static void PopulateAppNode(TreeNode node, string dir)
+    private static void PopulateNodes<TTree>(TTree tree, string dir,
+        Func<TTree, string, string, TreeNode> nodeCreator)
     {
         string[] subdirs = Directory.GetDirectories(dir, "*", SearchOption.TopDirectoryOnly);
         foreach (string subdir in subdirs)
         {
             string subdirName = Path.GetFileName(subdir);
-            TreeNode childNode = node.Nodes.Add(subdir, subdirName);
-            PopulateAppNode(childNode, subdir);
+            TreeNode childNode = nodeCreator(tree, subdir, subdirName);
+            PopulateNodes(childNode, subdir, (node, name, text) => node.Nodes.Add(name, text));
         }
     }
 
